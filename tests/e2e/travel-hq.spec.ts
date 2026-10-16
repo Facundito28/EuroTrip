@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 const TEST_PASSWORD = "Una-clave-larga-de-prueba-2027";
 async function signIn(
@@ -129,6 +130,45 @@ test("real SQL workflow: create trip, budget, expenses, transfers, itinerary, sc
   await expect(dialog).not.toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Cena compartida de prueba" }),
+  ).toBeVisible();
+  // A 5 MiB receipt must bypass the Next.js action body and go directly to Storage.
+  await page
+    .getByText("Detalles, acciones y comprobantes", { exact: false })
+    .click();
+  await page.getByRole("button", { name: "Comprobante", exact: true }).click();
+  const receipt = page.getByRole("dialog");
+  const png = readFileSync("public/icon-192.png");
+  const receiptBytes = Buffer.concat([
+    png,
+    Buffer.alloc(5 * 1024 * 1024 - png.length),
+  ]);
+  let biggestServerPost = 0;
+  const inspectPost = (request: import("@playwright/test").Request) => {
+    if (
+      request.method() === "POST" &&
+      request.url().startsWith("http://127.0.0.1:3100/")
+    )
+      biggestServerPost = Math.max(
+        biggestServerPost,
+        request.postDataBuffer()?.length ?? 0,
+      );
+  };
+  page.on("request", inspectPost);
+  await receipt
+    .getByLabel("Comprobante de Cena compartida de prueba")
+    .setInputFiles({
+      name: "comprobante-5mb.png",
+      mimeType: "image/png",
+      buffer: receiptBytes,
+    });
+  await receipt
+    .getByRole("button", { name: "Subir comprobante", exact: true })
+    .click();
+  await expect(receipt).not.toBeVisible();
+  page.off("request", inspectPost);
+  expect(biggestServerPost).toBeLessThan(128 * 1024);
+  await expect(
+    page.getByRole("link", { name: "comprobante-5mb.png" }),
   ).toBeVisible();
   await navigate(page, "Saldos");
   await expect(page.locator(".transfer").first()).toBeVisible();

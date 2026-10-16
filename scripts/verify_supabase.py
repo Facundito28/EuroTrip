@@ -97,9 +97,13 @@ def main():
         assert sum(share["amount_minor"] for share in snapshot["shares"]) == 9001
         assert request(BASE + "/rest/v1/expenses?select=id", bearer=tokens[4]) == []
         print("PASS: real expense conversion, exact shares, deduplication and RLS isolation.")
-        png = (ROOT / "public/icon-192.png").read_bytes()
+        icon = (ROOT / "public/icon-192.png").read_bytes()
+        png = icon + bytes(5 * 1024 * 1024 - len(icon))
         object_path = f"{trip}/{expense}/{uuid.uuid4()}.png"
-        request(BASE + "/storage/v1/object/receipts/" + object_path, "POST", png, owner, raw=True)
+        ticket = request(BASE + "/storage/v1/object/upload/sign/receipts/" + object_path, "POST", {}, owner)
+        request(BASE + "/storage/v1" + ticket['url'], "PUT", png, raw=True)
+        info = request(BASE + "/storage/v1/object/info/receipts/" + object_path, bearer=owner)
+        assert info['size'] == len(png) and info['content_type'] == 'image/png'
         request(BASE + "/rest/v1/receipts", "POST", {"trip_id": trip, "expense_id": expense, "path": object_path, "filename": "verificacion-temporal.png"}, owner)
         signed = request(BASE + "/storage/v1/object/sign/receipts/" + object_path, "POST", {"expiresIn": 60}, tokens[1])
         signed_path = signed.get("signedURL") or signed.get("signedUrl")
@@ -113,7 +117,7 @@ def main():
             raise AssertionError("Outsider obtained a signed URL.")
         except urllib.error.HTTPError as error:
             assert error.code in (400, 403, 404)
-        print("PASS: real private Storage upload, download and outsider rejection.")
+        print("PASS: direct signed 5 MiB Storage upload, verified size, private download and outsider rejection.")
         updated_password = secrets.token_urlsafe(24)
         request(BASE + "/auth/v1/user", "PUT", {"password": updated_password}, owner)
         session = request(BASE + "/auth/v1/token?grant_type=password", "POST", {"email": f"hq-check-{run}-0@example.com", "password": updated_password})

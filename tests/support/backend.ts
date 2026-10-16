@@ -64,6 +64,8 @@ function jwt(user: { id: string; email: string }) {
     Buffer.from(JSON.stringify(o)).toString("base64url");
   return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: user.id, email: user.email, aud: "authenticated", role: "authenticated", exp: Math.floor(Date.now() / 1000) + 3600 })}.test-signature`;
 }
+const uploads = new Map<string, { path: string; userId: string }>();
+const files = new Map<string, { bytes: Buffer; type: string }>();
 let queue: Promise<unknown> = Promise.resolve();
 createServer((req, res) => {
   const run = async () => {
@@ -71,17 +73,59 @@ createServer((req, res) => {
     let body: Record<string, unknown> = {};
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
-    if (chunks.length) body = JSON.parse(Buffer.concat(chunks).toString());
+    const rawBody = Buffer.concat(chunks);
+    if (
+      chunks.length &&
+      String(req.headers["content-type"]).includes("application/json")
+    )
+      body = JSON.parse(rawBody.toString());
     const reply = (code: number, value: unknown) => {
-      res.writeHead(code, { "Content-Type": "application/json" });
+      res.writeHead(code, {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "http://127.0.0.1:3100",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "apikey,x-upsert,content-type",
+      });
       res.end(JSON.stringify(value));
     };
     try {
+      if (req.method === "OPTIONS") return reply(200, {});
+      if (
+        req.method === "PUT" &&
+        url.pathname.startsWith("/storage/v1/object/upload/sign/receipts/")
+      ) {
+        const ticket = uploads.get(url.searchParams.get("token") ?? "");
+        if (!ticket) return reply(403, { message: "Invalid upload ticket" });
+        const file = (
+          await new Response(rawBody, {
+            headers: { "Content-Type": String(req.headers["content-type"]) },
+          }).formData()
+        ).get("");
+        if (!(file instanceof File) || file.size > 5 * 1024 * 1024)
+          return reply(400, { message: "Invalid file" });
+        await db.exec("reset role");
+        await db.query("select set_config('request.jwt.claim.sub',$1,false)", [
+          ticket.userId,
+        ]);
+        await db.exec("set role authenticated");
+        await db.query(
+          "insert into storage.objects(bucket_id,name) values('receipts',$1)",
+          [ticket.path],
+        );
+        files.set(ticket.path, {
+          bytes: Buffer.from(await file.arrayBuffer()),
+          type: file.type,
+        });
+        uploads.delete(url.searchParams.get("token") ?? "");
+        return reply(200, { Key: "receipts/" + ticket.path });
+      }
       if (url.pathname === "/health") return reply(200, { ready: true });
       if (url.pathname === "/reset") {
         await db.exec(
           "reset role; truncate public.trips cascade; delete from auth.users",
         );
+        uploads.clear();
+        files.clear();
         identities.clear();
         passwords.clear();
         return reply(200, {});
@@ -139,6 +183,59 @@ createServer((req, res) => {
         user.id,
       ]);
       await db.exec("set role authenticated");
+      if (
+        url.pathname.startsWith("/storage/v1/object/upload/sign/receipts/") &&
+        req.method === "POST"
+      ) {
+        const path = url.pathname.slice(
+          "/storage/v1/object/upload/sign/receipts/".length,
+        );
+        const permitted = (
+          await db.query<{ v: boolean }>("select private.is_member($1) v", [
+            path.split("/")[0],
+          ])
+        ).rows[0].v;
+        if (!permitted) return reply(403, { message: "Forbidden" });
+        const ticket = crypto.randomUUID();
+        uploads.set(ticket, { path, userId: user.id });
+        return reply(200, {
+          url: "/object/upload/sign/receipts/" + path + "?token=" + ticket,
+        });
+      }
+      if (url.pathname.startsWith("/storage/v1/object/info/receipts/")) {
+        const path = url.pathname.slice(
+          "/storage/v1/object/info/receipts/".length,
+        );
+        const rows = (
+          await db.query<{ id: string }>(
+            "select * from storage.objects where bucket_id='receipts' and name=$1",
+            [path],
+          )
+        ).rows;
+        const file = files.get(path);
+        if (!rows.length || !file) return reply(404, { message: "Not found" });
+        return reply(200, {
+          id: rows[0].id,
+          name: path,
+          bucket_id: "receipts",
+          size: file.bytes.length,
+          content_type: file.type,
+          created_at: new Date().toISOString(),
+        });
+      }
+      if (
+        url.pathname === "/storage/v1/object/receipts" &&
+        req.method === "DELETE"
+      ) {
+        for (const path of body.prefixes as string[]) {
+          const result = await db.query(
+            "delete from storage.objects where bucket_id='receipts' and name=$1 returning id",
+            [path],
+          );
+          if (result.rows.length) files.delete(path);
+        }
+        return reply(200, []);
+      }
       if (url.pathname.startsWith("/rest/v1/rpc/")) {
         const fn = url.pathname.split("/").at(-1)!;
         if (!functions.has(fn)) throw new Error("Unknown RPC");

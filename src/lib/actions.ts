@@ -5,6 +5,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { supabase } from "./supabase/server";
 import { currencies, parseMoney, toEur, validateRate } from "./money";
+import {
+  MAX_RECEIPT_BYTES,
+  receiptExtensions,
+  receiptMetadata,
+  validReceiptPath,
+} from "./receipts";
 import { passwordSchema } from "./password";
 import { categories } from "./types";
 
@@ -13,6 +19,7 @@ export type ActionResult = {
   message: string;
   invitationCode?: string;
   redirectTo?: string;
+  upload?: { path: string; signedUrl: string };
 };
 const uuid = z.uuid();
 const text = (max: number) =>
@@ -405,52 +412,83 @@ export async function saveScenarioItem(f: FormData) {
     return "Alternativa actualizada. No modifica los gastos del viaje.";
   });
 }
-export async function uploadReceipt(f: FormData) {
+export async function prepareReceiptUpload(f: FormData): Promise<ActionResult> {
+  let upload: ActionResult["upload"];
+  const result = await perform(async () => {
+    const { client } = await session();
+    const metadata = receiptMetadata.parse({
+      trip_id: get(f, "trip_id"),
+      expense_id: get(f, "expense_id"),
+      filename: get(f, "filename"),
+      content_type: get(f, "content_type"),
+      size: Number(get(f, "size")),
+    });
+    const { data: expense, error: lookup } = await client
+      .from("expenses")
+      .select("id")
+      .eq("trip_id", metadata.trip_id)
+      .eq("id", metadata.expense_id)
+      .single();
+    if (lookup || !expense) throw new Error("No se encontró el gasto.");
+    const path = `${metadata.trip_id}/${metadata.expense_id}/${crypto.randomUUID()}.${receiptExtensions[metadata.content_type]}`;
+    const { data, error } = await client.storage
+      .from("receipts")
+      .createSignedUploadUrl(path, { upsert: false });
+    if (error || !data)
+      throw new Error("No se pudo autorizar la subida. Reintentá.");
+    upload = { path, signedUrl: data.signedUrl };
+    return "Subida autorizada.";
+  });
+  return result.ok ? { ...result, upload } : result;
+}
+export async function completeReceiptUpload(
+  f: FormData,
+): Promise<ActionResult> {
   return perform(async () => {
     const { client, user } = await session();
     const trip = uuid.parse(get(f, "trip_id")),
-      expense = uuid.parse(get(f, "expense_id")),
-      file = f.get("file");
-    if (
-      !(file instanceof File) ||
-      file.size === 0 ||
-      file.size > 5 * 1024 * 1024
-    )
-      throw new Error("Seleccioná un archivo de hasta 5 MB.");
-    const extensions: Record<string, string> = {
-      "image/jpeg": "jpg",
-      "image/png": "png",
-      "image/webp": "webp",
-      "application/pdf": "pdf",
-    };
-    const ext = extensions[file.type];
-    if (!ext) throw new Error("Usá JPG, PNG, WebP o PDF.");
-    const { data, error: lookup } = await client
+      expense = uuid.parse(get(f, "expense_id"));
+    const path = get(f, "path"),
+      filename = text(200).parse(get(f, "filename"));
+    if (!validReceiptPath(path, trip, expense))
+      throw new Error("La ruta del comprobante es inválida.");
+    const { data: found, error: lookup } = await client
       .from("expenses")
       .select("id")
-      .eq("id", expense)
       .eq("trip_id", trip)
+      .eq("id", expense)
       .single();
-    if (lookup || !data) throw new Error("No se encontró el gasto.");
-    const path = `${trip}/${expense}/${crypto.randomUUID()}.${ext}`;
-    const { error: upload } = await client.storage
+    if (lookup || !found) throw new Error("No se encontró el gasto.");
+    const { data: existing, error: existingError } = await client
       .from("receipts")
-      .upload(path, file, { contentType: file.type, upsert: false });
-    if (upload)
+      .select("id")
+      .eq("path", path);
+    if (existingError) throw dbError(existingError);
+    if (existing?.length) return "Comprobante guardado de forma privada.";
+    const { data: file, error: infoError } = await client.storage
+      .from("receipts")
+      .info(path);
+    if (infoError || !file)
       throw new Error(
-        "No se pudo subir el comprobante. Revisá el bucket privado y la conexión.",
+        "No se pudo confirmar el archivo. Reintentá cuando tengas conexión.",
+      );
+    if (
+      !file.size ||
+      file.size > MAX_RECEIPT_BYTES ||
+      !file.contentType ||
+      !receiptExtensions[file.contentType]
+    )
+      throw new Error(
+        "El archivo guardado no cumple los límites de tamaño o formato.",
       );
     const { error } = await client.from("receipts").insert({
       trip_id: trip,
       expense_id: expense,
       path,
-      filename: file.name.slice(0, 200),
+      filename,
       created_by: user.id,
     });
-    if (error) {
-      await client.storage.from("receipts").remove([path]);
-      throw dbError(error);
-    }
+    if (error) throw dbError(error);
     return "Comprobante guardado de forma privada.";
   });
 }

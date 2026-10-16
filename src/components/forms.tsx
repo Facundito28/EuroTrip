@@ -8,7 +8,6 @@ import {
   saveScenarioItem,
   saveTrip,
   inviteMember,
-  uploadReceipt,
 } from "@/lib/actions";
 import { currencies, decimalAmount, formatMoney } from "@/lib/money";
 import {
@@ -18,6 +17,7 @@ import {
   type Event,
   type Scenario,
 } from "@/lib/types";
+import { ReceiptUploader } from "./receipt-uploader";
 import { ActionForm, HiddenTrip } from "./action-form";
 const today = () => new Date().toISOString().slice(0, 10);
 export function MoneyFields({
@@ -572,25 +572,11 @@ export function ReceiptForm({
   done: () => void;
 }) {
   return (
-    <ActionForm
-      action={uploadReceipt}
-      label="Subir comprobante"
-      onSuccess={done}
-    >
-      <HiddenTrip id={data.trip.id} />
-      <input type="hidden" name="expense_id" value={expense.id} />
-      <label>
-        Comprobante de {expense.description}
-        <input
-          name="file"
-          type="file"
-          required
-          accept="image/jpeg,image/png,image/webp,application/pdf"
-        />
-      </label>
-      <p className="field-help">
-        JPG, PNG, WebP o PDF. Máximo 5 MB. Acceso privado para el grupo.
-      </p>
-    </ActionForm>
+    <ReceiptUploader
+      trip={data.trip.id}
+      expense={expense.id}
+      description={expense.description}
+      done={done}
+    />
   );
 }

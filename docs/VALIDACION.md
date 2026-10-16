@@ -7,7 +7,7 @@ Registro e ingreso con correo y contraseña; invitación privada obligatoria par
 ## Validación local
 
 - Instalación reproducible con lockfile.
-- 40 pruebas de dinero, contraseñas y PostgreSQL aprobadas, en cuatro archivos.
+- 42 pruebas de dinero, contraseñas, comprobantes y PostgreSQL aprobadas, en cinco archivos.
 - Pruebas de navegador en escritorio y tamaño iPhone: registro, cookies HttpOnly, invitación, incorporación al grupo, presupuesto, gasto compartido, devolución, itinerario, calendario, escenarios, CSV, cambio de contraseña y nuevo ingreso.
 - Pruebas PWA: manifiesto, pantalla sin conexión y exclusión de páginas privadas del caché.
 - TypeScript, ESLint y compilación de producción comprobados.
@@ -24,7 +24,7 @@ El verificador `scripts/verify_supabase.py` completó satisfactoriamente:
 2. Incorporación de cuatro integrantes mediante sus códigos privados; rechazo de un código usado por otra identidad.
 3. Conversión de un gasto original de USD a EUR, reparto que conserva centavos, reenvío sin duplicación y cambio de reserva a pagado sobre el mismo gasto.
 4. Aislamiento real de la quinta cuenta: no puede leer los gastos del viaje.
-5. Subida de un PNG al bucket privado, descarga por un compañero con URL firmada y rechazo de descarga para el no integrante.
+5. Subida directa de un PNG de 5 MiB al bucket privado mediante URL firmada, verificación del tamaño real, descarga por un compañero con URL firmada y rechazo de descarga para el no integrante.
 6. Cambio de contraseña e ingreso posterior con la nueva contraseña, sin SMTP.
 7. Eliminación de los objetos, el viaje y las cinco cuentas temporales al finalizar. Una primera ejecución reveló que la limpieza debía eliminar movimientos antes del viaje por las claves foráneas; se corrigió el orden, se completó la limpieza pendiente y la siguiente ejecución pasó completa.
 
@@ -37,3 +37,11 @@ No se imprimieron ni guardaron contraseñas, códigos privados, tokens o enlaces
 - La recuperación automática de contraseña por email queda fuera de este flujo; requiere SMTP o intervención administrativa con comprobación de identidad.
 - Todavía no se publicó la aplicación en Vercel ni se validó una instalación PWA en dispositivos físicos con el dominio final.
 - No se hizo merge a `main` ni push al remoto. Un push puede disparar deployments automáticos y sigue pendiente de autorización.
+
+## Preparación de Vercel
+
+La subida de comprobantes evita el límite de 4,5 MB de las funciones: el servidor autoriza la ruta con la sesión y el gasto, el navegador transfiere el archivo directamente a Supabase, y el servidor comprueba el objeto antes de guardar su vínculo. Las pruebas de navegador transfirieron un archivo de 5 MiB mientras las solicitudes al servidor Next.js quedaron por debajo de 128 KiB. El verificador remoto también pasó con subida firmada de 5 MiB y limpieza completa.
+
+`.vercelignore` excluye archivos de entorno, scripts administrativos, pruebas y artefactos locales. El despliegue requiere configurar únicamente las dos variables públicas de Supabase; nunca tokens administrativos.
+
+La publicación fue autorizada por el usuario. La conexión de su cuenta de Vercel está pendiente mediante el flujo oficial de autorización de dispositivo. Todavía no hay un deployment confirmado ni una URL de producción.
