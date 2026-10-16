@@ -32,6 +32,12 @@ await db.exec(
 await db.exec(
   readFileSync("supabase/migrations/202610160005_member_names.sql", "utf8"),
 );
+await db.exec(
+  readFileSync(
+    "supabase/migrations/202610160006_advanced_expenses.sql",
+    "utf8",
+  ),
+);
 const passwords = new Map<string, string>();
 const identities = new Map<string, { id: string; email: string }>();
 const tables = new Set([
@@ -52,13 +58,16 @@ const functions = new Set([
   "accept_invitation",
   "accept_invitations",
   "save_expense",
+  "save_expense_v2",
+  "add_expense_payment",
+  "delete_expense_payment",
   "mark_expense_paid",
   "delete_expense",
   "hq_snapshot",
   "save_personal_budget",
 ]);
 const identifier = (s: string) => {
-  if (!/^[a-z_]+$/.test(s)) throw new Error("Invalid test identifier");
+  if (!/^[a-z_][a-z0-9_]*$/.test(s)) throw new Error("Invalid test identifier");
   return `"${s}"`;
 };
 function userObject(user: { id: string; email: string }) {

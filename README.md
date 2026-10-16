@@ -189,3 +189,13 @@ Agregar a Google Calendar abre la página de Google para revisar y guardar; no c
 ## Nombres del equipo
 
 En Equipo cada integrante puede editar su propio nombre visible, y el organizador puede editar los nombres del grupo. Migración `202610160005_member_names.sql` aplicada: RLS y permiso de actualización limitado a `display_name`. No cambia correos, identidad ni saldos.
+
+## Gastos avanzados
+
+Migración `202610160006_advanced_expenses.sql`: libro de pagos separados, reparto por importes o porcentajes, snapshot con pagos y actividad privada. Se aplica en orden después de las cinco anteriores. Incluye comprobaciones transaccionales de preservación de gastos, repartos y pagadores anteriores; los gastos previamente pagados generan un pago equivalente, sin alterar sus importes históricos. El RPC anterior sigue siendo compatible con clientes ya abiertos.
+
+Una reserva guarda el total original y su TC base. Cada cuota registra el importe cancelado en esa misma moneda, su pagador y TC efectivo. El consumo real es la suma EUR de cuotas, el pendiente se convierte al TC base y las deudas se distribuyen según el reparto elegido. La asignación usa mayores restos con desempate por UUID para conservar centavos. Los pagos a proveedores y las transferencias entre integrantes son conceptos separados. La suma de pagos no puede exceder el total original. No se hacen cobros automáticos ni se programan vencimientos futuros.
+
+Una vez registrados pagos, moneda, TC base, fecha de TC y pagador previsto quedan protegidos; se puede editar descripción, reparto y total si no queda debajo de lo ya pagado. Para corregir un pago, se anula desde detalles (creador u organizador) y se registra de nuevo. El historial inmutable conserva la operación. Actividad muestra los últimos 100 registros; no hay historial inventado previo a la migración.
+
+Carga rápida en Resumen y Repetir gasto en detalles preparan un formulario que requiere confirmación. La repetición no copia cuotas ni archivos y exige revisar una nueva cotización en monedas distintas de EUR. CSV incluye importe total, TC base, pagos efectivos EUR y pendiente.

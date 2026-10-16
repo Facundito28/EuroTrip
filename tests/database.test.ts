@@ -59,6 +59,12 @@ beforeAll(async () => {
   await db.exec(
     readFileSync("supabase/migrations/202610160005_member_names.sql", "utf8"),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/202610160006_advanced_expenses.sql",
+      "utf8",
+    ),
+  );
   await as(0);
   trip = (
     await db.query<{ id: string }>(
@@ -238,8 +244,8 @@ it("rolls back invalid edits and retains the previous amount and shares", async 
   ).toHaveLength(4);
 });
 it("supports partial groups and deterministic remainder distribution", async () => {
-  await db.query(saveSql, [
-    expense,
+  const created = await db.query<{ id: string }>(saveSql, [
+    null,
     trip,
     1001,
     "1",
@@ -247,12 +253,11 @@ it("supports partial groups and deterministic remainder distribution", async () 
     users[0],
     users.slice(1, 4),
   ]);
-  const shares = (
-    await db.query<{ amount: number }>(
-      "select amount_minor::int amount from public.expense_shares order by member_id",
-    )
-  ).rows;
-  expect(shares.map((x) => x.amount)).toEqual([334, 334, 333]);
+  const shares = await db.query<{ amount: number }>(
+    "select amount_minor::int amount from public.expense_shares where expense_id=$1 order by member_id",
+    [created.rows[0].id],
+  );
+  expect(shares.rows.map((x) => x.amount)).toEqual([334, 334, 333]);
 });
 it("rejects duplicate participants and EUR rates different from 1", async () => {
   await fails(saveSql, [
@@ -476,4 +481,149 @@ it("allows self and organizer name edits while protecting identities and other m
       )
     ).rows,
   ).toHaveLength(0);
+});
+it("supports partial payments, separate payers/rates, idempotence and reversals", async () => {
+  await as(0);
+  const e = (
+    await db.query<{ id: string }>(
+      "select public.save_expense_v2(null,$1,'Airbnb','Alojamiento',80000,'USD',0.9,'2027-04-22','2027-04-22','reserved',$2,$3,'',$4,'percent',$5) id",
+      [
+        trip,
+        users[0],
+        users.slice(0, 2),
+        "66666666-6666-4666-8666-666666666666",
+        [6000, 4000],
+      ],
+    )
+  ).rows[0].id;
+  const sql =
+    "select public.add_expense_payment($1,$2,$3,$4,$5,$6,'2027-04-23','2027-04-23','Cuota') id";
+  const args = [
+    trip,
+    e,
+    "77777777-7777-4777-8777-777777777777",
+    users[1],
+    20000,
+    "0.95",
+  ];
+  const pid = (await db.query<{ id: string }>(sql, args)).rows[0].id;
+  expect((await db.query<{ id: string }>(sql, args)).rows[0].id).toBe(pid);
+  let snap = (
+    await db.query<{ v: import("../src/lib/types").HQData }>(
+      "select public.hq_snapshot($1) v",
+      [trip],
+    )
+  ).rows[0].v;
+  expect(snap.expenses.find((x) => x.id === e)?.paid_eur_minor).toBe(19000);
+  expect(snap.expenses.find((x) => x.id === e)?.status).toBe("reserved");
+  expect(
+    snap.shares
+      .filter((x) => x.expense_id === e)
+      .map((x) => x.amount_minor)
+      .sort((a, b) => b - a),
+  ).toEqual([43200, 28800]);
+  await fails(sql, [
+    trip,
+    e,
+    "88888888-8888-4888-8888-888888888888",
+    users[0],
+    60001,
+    "1",
+  ]);
+  await db.query(sql, [
+    trip,
+    e,
+    "99999999-9999-4999-8999-999999999999",
+    users[0],
+    60000,
+    "1",
+  ]);
+  snap = (
+    await db.query<{ v: import("../src/lib/types").HQData }>(
+      "select public.hq_snapshot($1) v",
+      [trip],
+    )
+  ).rows[0].v;
+  expect(snap.expenses.find((x) => x.id === e)?.paid_eur_minor).toBe(79000);
+  expect(snap.expenses.find((x) => x.id === e)?.status).toBe("paid");
+  await as(2);
+  await fails("select public.delete_expense_payment($1,$2)", [trip, pid]);
+  await as(4);
+  expect(
+    (await db.query("select * from public.expense_payments")).rows,
+  ).toHaveLength(0);
+  expect(
+    (await db.query("select * from public.activity_log")).rows,
+  ).toHaveLength(0);
+  await as(0);
+  await db.query("select public.delete_expense_payment($1,$2)", [trip, pid]);
+  snap = (
+    await db.query<{ v: import("../src/lib/types").HQData }>(
+      "select public.hq_snapshot($1) v",
+      [trip],
+    )
+  ).rows[0].v;
+  expect(snap.expenses.find((x) => x.id === e)?.status).toBe("reserved");
+  expect(
+    snap.activity?.some(
+      (a) => a.entity === "expense_payments" && a.action === "DELETE",
+    ),
+  ).toBe(true);
+  await fails("delete from public.activity_log");
+  await fails("update public.expense_payments set amount_minor=1");
+  await fails(
+    "select public.save_expense_base(null,$1,'Tamper','Comida',1,'EUR',1,'2027-04-22','2027-04-22','paid',$2,$3,'',null)",
+    [trip, users[0], [users[0]]],
+  );
+});
+it("rejects unequal shares that do not conserve total and records share edits", async () => {
+  await as(0);
+  const sql =
+    "select public.save_expense_v2($1,$2,'Reparto','Comida',10001,'EUR',1,'2027-04-22','2027-04-22','reserved',$3,$4,'',$5,$6,$7) id";
+  const request = "aaaaaaaa-1111-4111-8111-111111111111";
+  await fails(sql, [
+    null,
+    trip,
+    users[0],
+    users.slice(0, 2),
+    request,
+    "amount",
+    [5000, 5000],
+  ]);
+  await fails(sql, [
+    null,
+    trip,
+    users[0],
+    users.slice(0, 2),
+    request,
+    "percent",
+    [5000, 4000],
+  ]);
+  const eid = (
+    await db.query<{ id: string }>(sql, [
+      null,
+      trip,
+      users[0],
+      users.slice(0, 2),
+      request,
+      "amount",
+      [6000, 4001],
+    ])
+  ).rows[0].id;
+  await db.query(sql, [
+    eid,
+    trip,
+    users[0],
+    users.slice(0, 2),
+    request,
+    "amount",
+    [4001, 6000],
+  ]);
+  expect(
+    (
+      await db.query(
+        "select * from public.activity_log where entity='expense_shares' and action='UPDATE'",
+      )
+    ).rows.length,
+  ).toBeGreaterThan(0);
 });

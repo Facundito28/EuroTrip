@@ -1,3 +1,4 @@
+import { paidAmount, remainingAmount, remainingOriginal } from "./finance";
 import { decimalAmount } from "./money";
 import type { Expense, Member } from "./types";
 function cell(value: string) {
@@ -20,6 +21,10 @@ export function expensesCsv(expenses: Expense[], members: Member[]) {
       "Fecha cotización",
       "Equivalente EUR",
       "Notas",
+      "Pagado efectivo EUR",
+      "Pendiente original",
+      "Pendiente EUR al TC de reserva",
+      "Reparto",
     ],
     ...expenses.map((e) => [
       e.id,
@@ -36,6 +41,10 @@ export function expensesCsv(expenses: Expense[], members: Member[]) {
       e.rate_date,
       decimalAmount(e.eur_minor),
       e.notes,
+      decimalAmount(paidAmount(e)),
+      decimalAmount(remainingOriginal(e)),
+      decimalAmount(remainingAmount(e)),
+      e.split_method ?? "equal",
     ]),
   ];
   return "\uFEFF" + rows.map((row) => row.map(cell).join(";")).join("\r\n");

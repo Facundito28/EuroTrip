@@ -424,3 +424,113 @@ test("PWA shows offline fallback and never caches private pages", async ({
     page.getByRole("heading", { name: "Una pausa en el camino." }),
   ).toBeVisible();
 });
+test("advanced expenses: quick entry, unequal shares, installments, repeat and activity", async ({
+  page,
+  browser,
+}, info) => {
+  const email = `advanced-${info.project.name}@example.test`;
+  await signIn(page, email);
+  await page
+    .getByText("Soy el organizador: crear un viaje", { exact: true })
+    .click();
+  await page
+    .getByLabel("Tu nombre", { exact: true })
+    .fill("Organizador cuotas");
+  await page.getByRole("button", { name: "Crear mi viaje" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Tu viaje, bajo control." }),
+  ).toBeVisible();
+  await navigate(page, "Equipo");
+  const friendEmail = `quota-${info.project.name}@example.test`;
+  await page.getByLabel("Correo del integrante").fill(friendEmail);
+  await page
+    .getByRole("button", { name: "Generar invitación", exact: true })
+    .click();
+  const code = await page
+    .getByLabel("Código privado de invitación")
+    .inputValue();
+  const context = await browser.newContext();
+  const fp = await context.newPage();
+  await signIn(fp, friendEmail);
+  await fp.getByLabel("Código de invitación", { exact: true }).fill(code);
+  await fp
+    .getByRole("button", { name: "Unirme al viaje", exact: true })
+    .click();
+  await expect(
+    fp.getByRole("heading", { name: "Tu viaje, bajo control." }),
+  ).toBeVisible();
+  await context.close();
+  await page.getByRole("button", { name: "Actualizar datos" }).click();
+  await navigate(page, "Resumen");
+  await page
+    .locator(".quick-expenses")
+    .getByRole("button", { name: "Alojamiento", exact: true })
+    .click();
+  let dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("combobox", { name: "Categoría", exact: true }),
+  ).toHaveValue("Alojamiento");
+  await dialog.getByLabel("Descripción", { exact: true }).fill("Airbnb cuotas");
+  await dialog.getByLabel("Importe original").fill("800");
+  await dialog
+    .getByRole("combobox", { name: "Estado", exact: true })
+    .selectOption("reserved");
+  await dialog.getByLabel("Cómo dividir").selectOption("percent");
+  await dialog.getByLabel("Organizador cuotas · %", { exact: true }).fill("60");
+  await dialog
+    .getByLabel(`quota-${info.project.name} · %`, { exact: true })
+    .fill("40");
+  await dialog
+    .getByRole("button", { name: "Guardar gasto", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  await navigate(page, "Gastos");
+  const row = page.locator(".expense-row").filter({
+    has: page.getByRole("heading", { name: "Airbnb cuotas", exact: true }),
+  });
+  await row.locator(":scope > details > summary").click();
+  await row.getByText("Registrar anticipo o cuota", { exact: true }).click();
+  await row.getByLabel("Importe del pago · EUR", { exact: true }).fill("200");
+  await row
+    .getByLabel("Quién pagó esta cuota")
+    .selectOption({ label: `quota-${info.project.name}` });
+  await row
+    .getByRole("button", { name: "Registrar pago", exact: true })
+    .click();
+  await expect(row.locator(".expense-payments > p")).toContainText("200,00");
+  await expect(row.locator(".expense-payments > p")).toContainText("600,00");
+  await row.getByLabel("Importe del pago · EUR", { exact: true }).fill("600");
+  await row
+    .getByLabel("Quién pagó esta cuota")
+    .selectOption({ label: "Organizador cuotas" });
+  await row
+    .getByRole("button", { name: "Registrar pago", exact: true })
+    .click();
+  await expect(row.locator(".badge").first()).toHaveText("Pagado");
+  await expect(row.locator(".payment-row")).toHaveCount(2);
+  await row.getByRole("button", { name: "Repetir gasto", exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Importe original")).toHaveValue("800.00");
+  await dialog.getByLabel("Descripción", { exact: true }).fill("Otra estadía");
+  await dialog.getByLabel("Importe original").fill("10");
+  await dialog
+    .getByRole("button", { name: "Guardar gasto", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  const copy = page.locator(".expense-row").filter({
+    has: page.getByRole("heading", { name: "Otra estadía", exact: true }),
+  });
+  await copy.locator(":scope > details > summary").click();
+  await expect(copy.locator(".payment-row")).toHaveCount(1);
+  await navigate(page, "Actividad");
+  await expect(
+    page.getByRole("heading", { name: "Actividad reciente", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".activity-list")).toContainText("Airbnb cuotas");
+  await expect(page.locator(".activity-list")).toContainText("pago");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

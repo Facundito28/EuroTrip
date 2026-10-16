@@ -191,7 +191,7 @@ export async function saveExpense(f: FormData) {
       .min(1, "Elegí al menos un participante.")
       .max(4)
       .parse(f.getAll("members"));
-    const { error } = await client.rpc("save_expense", {
+    const { error } = await client.rpc("save_expense_v2", {
       p_id: get(f, "id") ? uuid.parse(get(f, "id")) : null,
       p_request: uuid.parse(get(f, "request_id")),
       p_trip: uuid.parse(get(f, "trip_id")),
@@ -207,6 +207,13 @@ export async function saveExpense(f: FormData) {
         .parse(get(f, "status")),
       p_payer: uuid.parse(get(f, "payer_id")),
       p_members: members,
+      p_method: z
+        .enum(["equal", "amount", "percent"])
+        .parse(get(f, "split_method") || "equal"),
+      p_weights:
+        (get(f, "split_method") || "equal") === "equal"
+          ? null
+          : members.map((id) => parseMoney(get(f, "share_" + id))),
       p_notes: z.string().max(2000).parse(get(f, "notes")),
     });
     if (error) throw dbError(error);
@@ -564,5 +571,35 @@ export async function saveMemberName(f: FormData) {
         "Solo podés editar tu nombre, salvo que seas el organizador.",
       );
     return "Nombre actualizado.";
+  });
+}
+
+export async function addExpensePayment(f: FormData) {
+  return perform(async () => {
+    const { client } = await session();
+    const { error } = await client.rpc("add_expense_payment", {
+      p_trip: uuid.parse(get(f, "trip_id")),
+      p_expense: uuid.parse(get(f, "expense_id")),
+      p_request: uuid.parse(get(f, "request_id")),
+      p_payer: uuid.parse(get(f, "payer_id")),
+      p_amount: parseMoney(get(f, "amount")),
+      p_rate: validateRate(get(f, "rate")),
+      p_rate_date: date.parse(get(f, "rate_date")),
+      p_date: date.parse(get(f, "occurred_on")),
+      p_notes: z.string().max(2000).parse(get(f, "notes")),
+    });
+    if (error) throw dbError(error);
+    return "Pago registrado sin duplicar el gasto.";
+  });
+}
+export async function deleteExpensePayment(f: FormData) {
+  return perform(async () => {
+    const { client } = await session();
+    const { error } = await client.rpc("delete_expense_payment", {
+      p_trip: uuid.parse(get(f, "trip_id")),
+      p_payment: uuid.parse(get(f, "payment_id")),
+    });
+    if (error) throw dbError(error);
+    return "Pago anulado; el saldo pendiente se actualizó.";
   });
 }

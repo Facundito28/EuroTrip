@@ -41,11 +41,15 @@ export type Expense = {
   created_by: string;
   notes: string;
   created_at: string;
+  split_method?: "equal" | "amount" | "percent";
+  paid_original_minor?: number;
+  paid_eur_minor?: number;
 };
 export type Share = {
   expense_id: string;
   member_id: string;
   amount_minor: number;
+  weight?: number;
 };
 export type Settlement = {
   id: string;
@@ -120,4 +124,30 @@ export type HQData = {
   receipts: Receipt[];
   userId: string;
   personal_budget_minor?: number | null;
+  payments?: ExpensePayment[];
+  activity?: Activity[];
+};
+
+export type ExpensePayment = {
+  id: string;
+  trip_id: string;
+  expense_id: string;
+  payer_id: string;
+  amount_minor: number;
+  eur_minor: number;
+  rate_to_eur: string | number;
+  rate_date: string;
+  occurred_on: string;
+  notes: string;
+  created_by: string;
+};
+export type Activity = {
+  id: string;
+  actor_id: string | null;
+  entity: string;
+  action: string;
+  label: string;
+  created_at: string;
+  before_data: Record<string, unknown> | null;
+  after_data: Record<string, unknown> | null;
 };

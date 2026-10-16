@@ -68,3 +68,39 @@ export function formatMoney(minor: number, currency: Currency = "EUR"): string {
 export function decimalAmount(minor: number): string {
   return (minor / 100).toFixed(2);
 }
+
+/** Largest remainder allocation, conserving cents for arbitrary nonnegative weights. */
+export function splitWeighted(
+  total: number,
+  weights: Record<string, number>,
+): Record<string, number> {
+  const entries = Object.entries(weights);
+  if (
+    !Number.isSafeInteger(total) ||
+    total < 0 ||
+    total > MAX_MINOR ||
+    !entries.length ||
+    entries.some(([, w]) => !Number.isSafeInteger(w) || w < 0)
+  )
+    throw new Error("Reparto inválido.");
+  const sum = entries.reduce((s, [, w]) => s + BigInt(w), 0n);
+  if (sum <= 0n)
+    throw new Error(
+      "El reparto debe tener participantes con importe mayor a cero.",
+    );
+  const result = Object.fromEntries(
+    entries.map(([id, w]) => [id, Number((BigInt(total) * BigInt(w)) / sum)]),
+  );
+  let rest = total - Object.values(result).reduce((a, b) => a + b, 0);
+  entries.sort(([a, wa], [b, wb]) => {
+    const ra = (BigInt(total) * BigInt(wa)) % sum,
+      rb = (BigInt(total) * BigInt(wb)) % sum;
+    return ra === rb ? a.localeCompare(b) : ra > rb ? -1 : 1;
+  });
+  for (const [id] of entries) {
+    if (!rest) break;
+    result[id]++;
+    rest--;
+  }
+  return result;
+}

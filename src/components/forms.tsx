@@ -23,7 +23,9 @@ import { ActionForm, HiddenTrip } from "./action-form";
 const today = () => new Date().toISOString().slice(0, 10);
 export function MoneyFields({
   expense,
+  reviewRate = false,
 }: {
+  reviewRate?: boolean;
   expense?: Pick<
     Expense,
     "amount_minor" | "currency" | "rate_to_eur" | "rate_date"
@@ -68,7 +70,7 @@ export function MoneyFields({
             defaultValue={
               currency === "EUR"
                 ? "1"
-                : expense?.currency === currency
+                : !reviewRate && expense?.currency === currency
                   ? String(expense.rate_to_eur)
                   : ""
             }
@@ -95,12 +97,23 @@ export function MoneyFields({
 export function ExpenseForm({
   data,
   expense,
+  repeat = false,
+  preset,
   done,
 }: {
   data: HQData;
+  repeat?: boolean;
+  preset?: string;
   expense?: Expense;
   done: () => void;
 }) {
+  const [description, setDescription] = useState(
+    expense?.description ?? preset ?? "",
+  );
+  const [category, setCategory] = useState(
+    expense?.category ?? preset ?? "Comida",
+  );
+  const [method, setMethod] = useState(expense?.split_method ?? "equal");
   const [requestId] = useState(() => crypto.randomUUID());
   const selected = expense
     ? data.shares
@@ -110,12 +123,46 @@ export function ExpenseForm({
   return (
     <ActionForm
       action={saveExpense}
-      label={expense ? "Guardar cambios" : "Guardar gasto"}
+      label={expense && !repeat ? "Guardar cambios" : "Guardar gasto"}
       onSuccess={done}
     >
       <HiddenTrip id={data.trip.id} />
       <input type="hidden" name="request_id" value={requestId} />
-      <input type="hidden" name="id" value={expense?.id ?? ""} />
+      <input
+        type="hidden"
+        name="id"
+        value={!repeat ? (expense?.id ?? "") : ""}
+      />
+      {!expense && (
+        <div className="quick-expenses">
+          {["Comida", "Transporte", "Alojamiento", "Actividades"].map((c) => (
+            <button
+              type="button"
+              className="button secondary small"
+              key={c}
+              onClick={() => {
+                setCategory(c);
+                setDescription(c);
+              }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      )}
+      {expense && !repeat && (expense.paid_original_minor ?? 0) > 0 && (
+        <p className="field-help">
+          Este gasto tiene pagos registrados. Podés editar descripción, reparto
+          y total, pero no cambiar su moneda, cotización base ni pagador
+          original. Los pagos se corrigen desde sus detalles.
+        </p>
+      )}
+      {repeat && (
+        <p className="notice">
+          Nueva compra basada en otra. Revisá importe, participantes y
+          cotización. No se copian pagos ni comprobantes.
+        </p>
+      )}
       <label>
         Descripción
         <input
@@ -123,13 +170,18 @@ export function ExpenseForm({
           required
           maxLength={160}
           placeholder="¿En qué gastaron?"
-          defaultValue={expense?.description}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
         />
       </label>
       <div className="form-grid">
         <label>
           Categoría
-          <select name="category" defaultValue={expense?.category ?? "Comida"}>
+          <select
+            name="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
             {categories.map((c) => (
               <option key={c}>{c}</option>
             ))}
@@ -137,14 +189,24 @@ export function ExpenseForm({
         </label>
         <label>
           Estado
-          <select name="status" defaultValue={expense?.status ?? "paid"}>
+          <select
+            name="status"
+            defaultValue={repeat ? "paid" : (expense?.status ?? "paid")}
+          >
             <option value="paid">Pagado</option>
             <option value="reserved">Reservado · pendiente de pago</option>
             <option value="estimated">Estimado · sin compromiso</option>
           </select>
         </label>
       </div>
-      <MoneyFields expense={expense} />
+      <MoneyFields
+        expense={
+          expense
+            ? { ...expense, rate_date: repeat ? today() : expense.rate_date }
+            : undefined
+        }
+        reviewRate={repeat}
+      />
       <div className="form-grid">
         <label>
           Fecha del gasto / reserva
@@ -152,7 +214,7 @@ export function ExpenseForm({
             type="date"
             name="occurred_on"
             required
-            defaultValue={expense?.occurred_on ?? today()}
+            defaultValue={repeat ? today() : (expense?.occurred_on ?? today())}
           />
         </label>
         <label>
@@ -169,7 +231,23 @@ export function ExpenseForm({
           </select>
         </label>
       </div>
-      <div className="field-label">Dividir en partes iguales entre</div>
+      <label>
+        Cómo dividir
+        <select
+          name="split_method"
+          value={method}
+          onChange={(e) => setMethod(e.target.value as typeof method)}
+        >
+          <option value="equal">Partes iguales</option>
+          <option value="amount">Importes exactos</option>
+          <option value="percent">Porcentajes</option>
+        </select>
+      </label>
+      <div className="field-label">
+        {method === "equal"
+          ? "Dividir en partes iguales entre"
+          : "Participantes del gasto"}
+      </div>
       <div className="member-checks">
         {data.members.map((m) => (
           <label key={m.user_id}>
@@ -186,9 +264,44 @@ export function ExpenseForm({
           </label>
         ))}
       </div>
+      {method !== "equal" && (
+        <>
+          <p className="field-help">
+            {method === "amount"
+              ? "Los importes deben sumar el total original en la moneda del gasto."
+              : "Los porcentajes deben sumar 100%. Admiten dos decimales."}{" "}
+            Solo se toman los integrantes seleccionados arriba.
+          </p>
+          <div className="form-grid">
+            {data.members.map((m) => (
+              <label key={m.user_id}>
+                {m.display_name} ·{" "}
+                {method === "percent" ? "%" : "importe original"}
+                <input
+                  key={method}
+                  name={"share_" + m.user_id}
+                  inputMode="decimal"
+                  defaultValue={
+                    expense?.split_method === method
+                      ? decimalAmount(
+                          data.shares.find(
+                            (s) =>
+                              s.expense_id === expense.id &&
+                              s.member_id === m.user_id,
+                          )?.weight ?? 0,
+                        )
+                      : "0"
+                  }
+                />
+              </label>
+            ))}
+          </div>
+        </>
+      )}
       <p className="field-help">
-        Los centavos sobrantes se asignan por ID de integrante para que la suma
-        sea exacta. Solo los pagos generan deudas.
+        Los centavos se distribuyen conservando el total exacto. Solo los pagos
+        generan deudas; una reserva permite registrar anticipos desde sus
+        detalles.
       </p>
       <label>
         Notas

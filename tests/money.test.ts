@@ -55,3 +55,19 @@ describe("integer money", () => {
     expect(() => splitEqual(100, ["a", "a"])).toThrow();
   });
 });
+it("allocates unequal amounts and percentages with deterministic largest remainders", async () => {
+  const { splitWeighted } = await import("../src/lib/money");
+  expect(splitWeighted(10001, { a: 50, b: 30, c: 20 })).toEqual({
+    a: 5001,
+    b: 3000,
+    c: 2000,
+  });
+  expect(splitWeighted(2, { b: 1, a: 1, c: 1 })).toEqual({ a: 1, b: 1, c: 0 });
+  expect(splitWeighted(100, { a: 0, b: 100 })).toEqual({ a: 0, b: 100 });
+  for (let n = 1; n < 10000; n += 113) {
+    const r = splitWeighted(n, { a: 3333, b: 3333, c: 3334 });
+    expect(Object.values(r).reduce((a, b) => a + b, 0)).toBe(n);
+  }
+  expect(() => splitWeighted(100, { a: 0 })).toThrow();
+  expect(() => splitWeighted(100, { a: -1, b: 2 })).toThrow();
+});

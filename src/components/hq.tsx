@@ -27,10 +27,18 @@ import {
   CircleHelp,
   Plane,
   RefreshCw,
+  History,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { balances, suggestedTransfers, totals } from "@/lib/finance";
+import {
+  balances,
+  suggestedTransfers,
+  totals,
+  paidAmount,
+  remainingAmount,
+  remainingOriginal,
+} from "@/lib/finance";
 import { formatMoney, splitEqual } from "@/lib/money";
 import {
   categories,
@@ -53,6 +61,8 @@ import {
 } from "./forms";
 import { ChangePasswordForm, JoinForm } from "./password-forms";
 import { TripCalendar } from "./calendar";
+import { ExpensePayments } from "./expense-payments";
+import { ActivityFeed } from "./activity";
 import { MemberName } from "./member-name";
 import { TripMap } from "./trip-map";
 import { googleCalendarUrl } from "@/lib/agenda";
@@ -65,11 +75,12 @@ const tabs = [
   ["itinerary", "Itinerario", CalendarDays],
   ["scenarios", "Escenarios", GitCompareArrows],
   ["team", "Equipo", Users],
+  ["activity", "Actividad", History],
   ["settings", "Configuración", Settings2],
 ] as const;
 type Tab = (typeof tabs)[number][0];
 type Modal =
-  | { kind: "expense"; expense?: Expense }
+  | { kind: "expense"; expense?: Expense; repeat?: boolean; preset?: string }
   | { kind: "event"; event?: Event }
   | { kind: "settlement" }
   | { kind: "scenario" }
@@ -202,7 +213,13 @@ export function HQ({ data }: { data: HQData }) {
     };
   }, []);
   const financial = totals(data.expenses, data.trip.budget_minor),
-    net = balances(data.members, data.expenses, data.shares, data.settlements),
+    net = balances(
+      data.members,
+      data.expenses,
+      data.shares,
+      data.settlements,
+      data.payments,
+    ),
     transfers = suggestedTransfers(net);
   const name = (id: string) =>
     data.members.find((m) => m.user_id === id)?.display_name ?? "Integrante";
@@ -238,8 +255,8 @@ export function HQ({ data }: { data: HQData }) {
   const totalCategory = categories.map((category) => ({
     category,
     total: data.expenses
-      .filter((e) => e.status === "paid" && e.category === category)
-      .reduce((sum, e) => sum + e.eur_minor, 0),
+      .filter((e) => e.category === category)
+      .reduce((sum, e) => sum + paidAmount(e), 0),
   }));
   const progress = data.trip.budget_minor
     ? Math.min(
@@ -250,7 +267,7 @@ export function HQ({ data }: { data: HQData }) {
   const modalTitle = modal
     ? {
         expense:
-          modal.kind === "expense" && modal.expense
+          modal.kind === "expense" && modal.expense && !modal.repeat
             ? "Editar gasto"
             : "Nuevo gasto",
         settlement: "Registrar transferencia",
@@ -399,6 +416,7 @@ export function HQ({ data }: { data: HQData }) {
                     scenarios: "Elegir también es planear.",
                     team: "El mejor equipo de viaje.",
                     settings: "A tu manera.",
+                    activity: "Lo que pasó en el viaje.",
                   }[tab]
                 }
               </h1>
@@ -417,6 +435,7 @@ export function HQ({ data }: { data: HQData }) {
                       "Compará alternativas con precios que vos registrás.",
                     team: "Un viaje privado, compartido entre cuatro.",
                     settings: "Presupuesto, fechas y recorrido de tu grupo.",
+                    activity: "Quién registró o modificó cada movimiento.",
                   }[tab]
                 }
               </p>
@@ -519,6 +538,23 @@ export function HQ({ data }: { data: HQData }) {
                       : "Sin presupuesto"}
                   </strong>
                   <small>Presupuesto − pagos − reservas</small>
+                </div>
+              </section>
+              <section className="panel">
+                <h2>Cargar en pocos toques</h2>
+                <div className="quick-expenses">
+                  {["Comida", "Transporte", "Alojamiento", "Actividades"].map(
+                    (c) => (
+                      <button
+                        key={c}
+                        className="button secondary small"
+                        onClick={() => setModal({ kind: "expense", preset: c })}
+                      >
+                        <Plus size={16} />
+                        {c}
+                      </button>
+                    ),
+                  )}
                 </div>
               </section>
               <PersonalBudget data={data} />
@@ -650,9 +686,17 @@ export function HQ({ data }: { data: HQData }) {
                             </small>
                           </span>
                           <span className="movement-amount">
-                            <strong>{formatMoney(e.eur_minor)}</strong>
+                            <strong>
+                              {formatMoney(
+                                e.status === "estimated"
+                                  ? e.eur_minor
+                                  : paidAmount(e) + remainingAmount(e),
+                              )}
+                            </strong>
                             <span className={`badge ${e.status}`}>
-                              {statusNames[e.status]}
+                              {e.status === "reserved" && paidAmount(e) > 0
+                                ? "Pago parcial"
+                                : statusNames[e.status]}
                             </span>
                           </span>
                         </button>
@@ -754,12 +798,26 @@ export function HQ({ data }: { data: HQData }) {
                           </small>
                         </div>
                         <div className="expense-amount">
-                          <strong>{formatMoney(e.eur_minor)}</strong>
+                          <strong>
+                            {formatMoney(
+                              e.status === "estimated"
+                                ? e.eur_minor
+                                : paidAmount(e) + remainingAmount(e),
+                            )}
+                          </strong>
                           <small>
                             {formatMoney(e.amount_minor, e.currency)}
                           </small>
+                          {paidAmount(e) > 0 && (
+                            <small>
+                              Pagado {formatMoney(paidAmount(e))} · Pendiente{" "}
+                              {formatMoney(remainingOriginal(e), e.currency)}
+                            </small>
+                          )}
                           <span className={`badge ${e.status}`}>
-                            {statusNames[e.status]}
+                            {e.status === "reserved" && paidAmount(e) > 0
+                              ? "Pago parcial"
+                              : statusNames[e.status]}
                           </span>
                         </div>
                       </div>
@@ -775,6 +833,12 @@ export function HQ({ data }: { data: HQData }) {
                           </p>
                           <p className="preserve">
                             {e.notes || "Sin notas adicionales."}
+                          </p>
+                          <ExpensePayments data={data} expense={e} />
+                          <p className="field-help">
+                            Reparto del total al TC de reserva. Las deudas se
+                            calculan sobre los pagos efectivos, con sus propias
+                            cotizaciones.
                           </p>
                           <div className="share-detail">
                             {data.shares
@@ -795,6 +859,18 @@ export function HQ({ data }: { data: HQData }) {
                             >
                               <Pencil size={14} />
                               Editar
+                            </button>
+                            <button
+                              className="button secondary small"
+                              onClick={() =>
+                                setModal({
+                                  kind: "expense",
+                                  expense: e,
+                                  repeat: true,
+                                })
+                              }
+                            >
+                              Repetir gasto
                             </button>
                             {e.status !== "paid" && (
                               <ActionForm
@@ -1279,6 +1355,7 @@ export function HQ({ data }: { data: HQData }) {
               )}
             </>
           )}
+          {tab === "activity" && <ActivityFeed data={data} />}
           {tab === "team" && (
             <div className="dashboard-columns">
               <section className="panel">
@@ -1455,6 +1532,8 @@ export function HQ({ data }: { data: HQData }) {
               key={modal.expense?.id ?? "new"}
               data={data}
               expense={modal.expense}
+              repeat={modal.repeat}
+              preset={modal.preset}
               done={close}
             />
           ) : modal.kind === "settlement" ? (

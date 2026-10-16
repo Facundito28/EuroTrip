@@ -117,6 +117,22 @@ def main():
         assert sum(share["amount_minor"] for share in snapshot["shares"]) == 9001
         assert request(BASE + "/rest/v1/expenses?select=id", bearer=tokens[4]) == []
         print("PASS: real expense conversion, exact shares, deduplication and RLS isolation.")
+        advanced = dict(payload, p_description="Cuotas temporales", p_amount=80000, p_status="reserved", p_request=str(uuid.uuid4()), p_method="percent", p_weights=[6000,4000], p_members=users[:2])
+        advanced_id = rpc(owner,"save_expense_v2",advanced)
+        payment = {"p_trip":trip,"p_expense":advanced_id,"p_request":str(uuid.uuid4()),"p_payer":users[1],"p_amount":20000,"p_rate":"0.95","p_rate_date":"2027-04-23","p_date":"2027-04-23","p_notes":"Seña temporal"}
+        payment_id=rpc(owner,"add_expense_payment",payment)
+        assert rpc(owner,"add_expense_payment",payment)==payment_id
+        ledger=rpc(owner,"hq_snapshot",{"p_trip":trip})
+        partial=next(e for e in ledger["expenses"] if e["id"]==advanced_id)
+        assert partial["paid_eur_minor"]==19000 and partial["paid_original_minor"]==20000 and partial["status"]=="reserved"
+        rpc(owner,"add_expense_payment",dict(payment,p_request=str(uuid.uuid4()),p_payer=users[0],p_amount=60000,p_rate="1"))
+        full=next(e for e in rpc(owner,"hq_snapshot",{"p_trip":trip})["expenses"] if e["id"]==advanced_id)
+        assert full["paid_eur_minor"]==79000 and full["status"]=="paid"
+        assert request(BASE+"/rest/v1/expense_payments?select=id",bearer=tokens[4])==[]
+        assert request(BASE+"/rest/v1/activity_log?select=id",bearer=tokens[4])==[]
+        rpc(owner,"delete_expense_payment",{"p_trip":trip,"p_payment":payment_id})
+        assert next(e for e in rpc(owner,"hq_snapshot",{"p_trip":trip})["expenses"] if e["id"]==advanced_id)["status"]=="reserved"
+        print("PASS: unequal split, partial payments with different payers/rates, deduplication, reversal and private audit.")
         icon = (ROOT / "public/icon-192.png").read_bytes()
         png = icon + bytes(5 * 1024 * 1024 - len(icon))
         object_path = f"{trip}/{expense}/{uuid.uuid4()}.png"

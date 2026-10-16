@@ -159,3 +159,39 @@ it("personal spending counts only own shares and keeps reservations separate", (
   });
   expect(personalTotals("c", expenses, shares, 10000).paid).toBe(0);
 });
+it("partial payments consume actual EUR, reserve only the remainder and credit each payer", () => {
+  const e = {
+    ...expense("partial", "reserved", 80000),
+    amount_minor: 80000,
+    paid_original_minor: 20000,
+    paid_eur_minor: 18000,
+  };
+  const shares = [
+    { expense_id: e.id, member_id: "a", amount_minor: 40000, weight: 50 },
+    { expense_id: e.id, member_id: "b", amount_minor: 40000, weight: 50 },
+  ];
+  expect(totals([e], 100000)).toEqual({
+    paid: 18000,
+    reserved: 60000,
+    estimated: 0,
+    available: 22000,
+    projected: 78000,
+  });
+  const payments = [
+    { expense_id: e.id, payer_id: "b", eur_minor: 10000 },
+    { expense_id: e.id, payer_id: "a", eur_minor: 8000 },
+  ] as import("../src/lib/types").ExpensePayment[];
+  expect(balances(members, [e], shares, [], payments)).toEqual({
+    a: -1000,
+    b: 1000,
+    c: 0,
+    d: 0,
+  });
+  expect(personalTotals("a", [e], shares, 50000)).toEqual({
+    paid: 9000,
+    reserved: 30000,
+    estimated: 0,
+    available: 11000,
+    projected: 39000,
+  });
+});

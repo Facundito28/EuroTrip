@@ -2603,3 +2603,38 @@ details[open] > summary svg {
   width: 100%;
   min-width: 0;
 }
+
+.quick-expenses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+.expense-payments {
+  border-top: 1px solid var(--border);
+  padding: 16px 0;
+}
+.expense-payments form {
+  max-width: 540px;
+  margin: 12px 0;
+}
+.payment-row {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+}
+.activity-list article {
+  border-bottom: 1px solid var(--border);
+  padding: 18px 0;
+  overflow-wrap: anywhere;
+}
+.activity-list small {
+  color: var(--muted);
+}
+.activity-list details {
+  margin-top: 12px;
+}
+.activity-list summary,
+.expense-payments summary {
+  cursor: pointer;
+  padding: 8px 0;
+}

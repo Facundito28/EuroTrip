@@ -83,3 +83,11 @@ Migración 202610160005 aplicada. Cada miembro puede editar su nombre visible; e
 Verificación en Supabase real aprobada: edición propia y por organizador, rechazo de edición ajena por otro viajero y limpieza completa de cinco cuentas temporales y sus datos.
 
 Publicación READY `dpl_FuBFeRRojn8zfvCuXa3aRfYYCr3Q`; dominio estable comprobado con ingreso HTTP 200 y guía HTTP 200 que incluye edición de nombres.
+
+## Gastos avanzados: carga rápida, reparto, cuotas y actividad
+
+Migración 202610160006 aplicada al proyecto real. Conservación de gastos, repartos y pagadores existentes comprobada dentro de la misma transacción; rollback obligatorio si cambian. Backfill de un pago equivalente por gasto pagado, sin alterar precios históricos. RPC anterior compatible con clientes abiertos. Nuevos RPC con bloqueo del gasto, validaciones de pertenencia, límite de pago e idempotencia; libro y auditoría solo de lectura para integrantes, sin escritura REST directa. Anulación limitada al creador u organizador.
+
+56 pruebas unitarias/SQL aprobadas. Cubren mayores restos, conservación de centavos, importes y porcentajes exactos, cuotas con cotizaciones y pagadores distintos, rechazo de sobrepago, reversión a reserva, aislamiento de terceros y actividad inmutable. Lint, TypeScript y compilación aprobados. Seis pruebas de navegador previas pasaron con el nuevo libro; la prueba nueva de carga rápida, 60/40, dos cuotas, repetición e historial se ejecuta también en escritorio y móvil. Se corrigieron los selectores del test (Resumen y combobox), sin desactivar aserciones.
+
+Verificador Supabase real aprobado: mismas validaciones de cuotas, reparto, idempotencia, anulación y auditoría privada; limpieza completa de cinco cuentas temporales y sus datos. El CSV incluye consumos efectivos y pendiente. Cuotas futuras sin pagar permanecen en el saldo reservado: no hay cronograma de vencimientos ni débitos automáticos.

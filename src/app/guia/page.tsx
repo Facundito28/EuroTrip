@@ -1,6 +1,22 @@
 import Link from "next/link";
 const steps = [
   [
+    "Carga rápida y repetir",
+    "En Resumen, Comida, Transporte, Alojamiento y Actividades abren una carga con categoría y descripción preparadas. Completá el importe y revisá quién paga y quiénes participan. En Gastos, Repetir gasto prepara una compra nueva con los datos y el reparto de otra: revisá la fecha, el importe y la cotización. No copia comprobantes ni cuotas; solo se guarda cuando confirmás.",
+  ],
+  [
+    "Repartos desiguales",
+    "En Cómo dividir elegí Partes iguales, Importes exactos o Porcentajes. Marcá los participantes. En Importes exactos, sus importes deben sumar el total original en la moneda elegida. En Porcentajes deben sumar 100%. Los centavos se reparten de forma determinista y la suma siempre coincide con el total.",
+  ],
+  [
+    "Anticipos y cuotas",
+    "Creá una reserva por el importe total. En sus detalles, Pagos y cuotas permite registrar cada anticipo o cuota: quién pagó, cuánto, en la moneda de la reserva, fecha y cotización efectiva. Cada cuota reduce el pendiente del mismo gasto. Al completar el total pasa a Pagado. Si fue un error, quien registró el pago o el organizador puede anularlo; la anulación queda en Actividad. No hay cargos automáticos ni envío de dinero. Las cuotas futuras todavía sin pagar permanecen como saldo pendiente; no hay calendario de vencimientos.",
+  ],
+  [
+    "Historial de actividad",
+    "Actividad muestra los últimos 100 movimientos desde su habilitación: quién creó, modificó o eliminó un gasto, pago, devolución, evento, nombre o configuración. Ver cambios muestra los valores anteriores y nuevos. El registro no puede editarse desde la app y no reconstruye movimientos anteriores a su habilitación.",
+  ],
+  [
     "Tu nombre en el equipo",
     "En Equipo, cada integrante puede tocar Editar mi nombre y guardar cómo quiere aparecer. El organizador también puede editar los nombres de los demás. Cambiar un nombre no cambia la cuenta, el correo ni el historial de gastos.",
   ],
