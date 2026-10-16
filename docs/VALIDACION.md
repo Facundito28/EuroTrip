@@ -35,8 +35,8 @@ No se imprimieron ni guardaron contraseñas, códigos privados, tokens o enlaces
 - La restricción del plan gratuito sobre plantillas OTP quedó evitada al cambiar a contraseña e invitación privada; no se contrató SMTP ni se cambió el plan.
 - No se verifica la propiedad del correo. El código de invitación proporciona la autorización al grupo y nunca se sustituye por una coincidencia de correo.
 - La recuperación automática de contraseña por email queda fuera de este flujo; requiere SMTP o intervención administrativa con comprobación de identidad.
-- Todavía no se publicó la aplicación en Vercel ni se validó una instalación PWA en dispositivos físicos con el dominio final.
-- No se hizo merge a `main`. Con autorización de publicación, se subió la rama `work` a GitHub con la versión validada. La autorización de cuenta Vercel continúa pendiente; no se confirmó un deployment.
+- Publicación de producción completada en https://eurotrip-2027-travel-hq.vercel.app. La instalación PWA en dispositivos físicos iOS y Android queda pendiente.
+- No se hizo merge a `main`. La rama `work` está subida a GitHub. La cuenta Vercel fue autorizada mediante el flujo oficial de dispositivo.
 
 ## Preparación de Vercel
 
@@ -44,4 +44,12 @@ La subida de comprobantes evita el límite de 4,5 MB de las funciones: el servid
 
 `.vercelignore` excluye archivos de entorno, scripts administrativos, pruebas y artefactos locales. El despliegue requiere configurar únicamente las dos variables públicas de Supabase; nunca tokens administrativos.
 
-La publicación fue autorizada por el usuario. La conexión de su cuenta de Vercel está pendiente mediante el flujo oficial de autorización de dispositivo. Todavía no hay un deployment confirmado ni una URL de producción.
+Publicación autorizada y completada mediante Vercel CLI 64.3.1, Next.js y Node.js 24. Deployment `dpl_675PLNed1AmW64Q9A5kKP83Yr9kv`, estado `READY`, destino `production`, URL https://eurotrip-2027-travel-hq.vercel.app. Las dos variables públicas están configuradas en producción y el Site URL de Supabase coincide con ese dominio.
+
+Verificación HTTP real sobre el dominio final: ingreso 200, manifiesto PWA 200 y exportación sin sesión 401. La compilación y TypeScript pasaron dentro de Vercel. El primer intento falló porque `supabase/` en `.vercelignore` también excluía `src/lib/supabase`; se corrigió a `/supabase/` para excluir únicamente las migraciones de raíz.
+
+La conexión automática del repositorio desde Vercel falló por acceso GitHub. El despliegue actual se hizo directamente con CLI desde la rama `work`; los pushes no tienen publicación automática configurada. No se modificaron otros proyectos de la cuenta.
+
+Se consultó https://vercel.com/get-started.md. CLI instalada y cuenta autenticada. El plugin y skills globales no pudieron instalarse por rutas de usuario no escribibles; el MCP no pudo persistirse porque la configuración de Codex es de solo lectura. Estas integraciones opcionales no se presentan como configuradas ni impidieron publicar con CLI.
+
+La comprobación adicional de navegador contra producción encontró `ERR_CERT_AUTHORITY_INVALID` en el Chromium aislado ante el certificado del proxy del entorno; no se deshabilitó TLS. Las comprobaciones HTTP con la cadena de confianza del entorno sí pasaron. Las pruebas locales de escritorio y móvil descritas arriba pasaron; no sustituyen pruebas físicas en Safari iOS y Chrome Android.

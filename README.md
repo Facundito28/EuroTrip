@@ -157,3 +157,11 @@ tests/                   Pruebas unitarias, SQL y navegador aislado
 - Nunca subir `.env.local`, credenciales o tokens. Rotar cualquier contraseña compartida por chat. La clave publicable no es una clave administrativa.
 - Habilitar copias de seguridad en Supabase según el plan; Storage requiere su estrategia de respaldo además de la base de datos. No borrar usuarios con movimientos financieros.
 - Si la red cloud bloquea el proyecto con `Tunnel connection failed: 403 Forbidden`, habilitar el hostname exacto `TU_PROYECTO.supabase.co` en el entorno. Eso es distinto de un error de Auth o RLS del proveedor.
+
+## Aplicación publicada
+
+https://eurotrip-2027-travel-hq.vercel.app
+
+Creá tu cuenta con correo y contraseña. El organizador crea el viaje y genera invitaciones privadas para los otros tres integrantes. En iPhone/iPad: Safari → Compartir → Agregar a inicio. En Android: Chrome → menú → Instalar aplicación o Agregar a pantalla principal. También funciona desde el navegador en PC. La instalación física en iOS y Android queda pendiente de verificar.
+
+El despliegue se realizó con Vercel CLI; la integración automática GitHub–Vercel todavía no está conectada. Ver `docs/VALIDACION.md` para evidencia y limitaciones.

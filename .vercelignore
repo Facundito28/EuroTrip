@@ -8,6 +8,6 @@ test-results/
 playwright-report/
 tests/
 scripts/
-supabase/
+/supabase/
 docs/
 *.tsbuildinfo
