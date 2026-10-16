@@ -94,6 +94,11 @@ def main():
         request(BASE + "/rest/v1/trips?id=eq." + trip, "PATCH", {"usd_per_eur": "1.10", "display_rate_date": "2026-10-16"}, owner)
         assert rpc(owner, "hq_snapshot", {"p_trip": trip})["trip"]["usd_per_eur"] == "1.10000000"
         print("PASS: private personal limits and exact manual display FX on real Supabase.")
+        request(BASE + "/rest/v1/itinerary_events", "POST", {"trip_id": trip, "title": "Visita temporal", "city": "Madrid", "location": "Museo temporal", "starts_on": "2027-04-22", "ends_on": "2027-04-22", "kind": "activity", "start_time": "10:00", "end_time": "12:00", "time_zone": "Europe/Madrid"}, owner)
+        event = rpc(tokens[1], "hq_snapshot", {"p_trip": trip})["events"][0]
+        assert event["start_time"] == "10:00:00" and event["location"] == "Museo temporal"
+        assert request(BASE + "/rest/v1/itinerary_events?select=id", bearer=tokens[4]) == []
+        print("PASS: real itinerary locations and destination times, shared only with members.")
         payload = {"p_id": None, "p_trip": trip, "p_description": "Verificación temporal", "p_category": "Comida", "p_amount": 10001, "p_currency": "USD", "p_rate": "0.9", "p_rate_date": "2027-04-22", "p_date": "2027-04-22", "p_status": "reserved", "p_payer": users[0], "p_members": users[:4], "p_notes": "Registro temporal; eliminado al terminar.", "p_request": str(uuid.uuid4())}
         expense = rpc(owner, "save_expense", payload)
         assert rpc(owner, "save_expense", payload) == expense

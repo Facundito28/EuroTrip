@@ -17,6 +17,7 @@ import {
   type Event,
   type Scenario,
 } from "@/lib/types";
+import { eventZones } from "@/lib/agenda";
 import { ReceiptUploader } from "./receipt-uploader";
 import { ActionForm, HiddenTrip } from "./action-form";
 const today = () => new Date().toISOString().slice(0, 10);
@@ -332,6 +333,50 @@ export function EventForm({
           />
         </label>
       </div>
+      <label>
+        Lugar o dirección
+        <input
+          name="location"
+          maxLength={300}
+          defaultValue={event?.location}
+          placeholder="Museo, hotel, estación o dirección exacta"
+        />
+      </label>
+      <div className="form-grid">
+        <label>
+          Hora de inicio
+          <input
+            name="start_time"
+            type="time"
+            defaultValue={event?.start_time?.slice(0, 5)}
+          />
+        </label>
+        <label>
+          Hora de fin
+          <input
+            name="end_time"
+            type="time"
+            defaultValue={event?.end_time?.slice(0, 5)}
+          />
+        </label>
+      </div>
+      <label>
+        Zona horaria del destino
+        <select
+          name="time_zone"
+          defaultValue={event?.time_zone ?? "Europe/Madrid"}
+        >
+          {eventZones.map((zone) => (
+            <option key={zone} value={zone}>
+              {zone.replace("Europe/", "")}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="field-help">
+        Dejá ambas horas vacías para todo el día. Para una visita con turno,
+        indicá las horas locales y la zona del destino.
+      </p>
       <label>
         Vincular gasto / reserva
         <select name="expense_id" defaultValue={event?.expense_id ?? ""}>

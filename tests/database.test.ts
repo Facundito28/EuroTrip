@@ -50,6 +50,12 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/202610160004_event_places_times.sql",
+      "utf8",
+    ),
+  );
   await as(0);
   trip = (
     await db.query<{ id: string }>(
@@ -406,4 +412,17 @@ it("only organizer can set display FX; historical flight prices stay unchanged",
   );
   expect(r.rows[0].v.trip.usd_per_eur).toBe("1.12345678");
   await fails("update public.trips set usd_per_eur=0 where id=$1", [trip]);
+});
+it("validates paired itinerary times and preserves destination details", async () => {
+  await as(0);
+  const sql =
+    "insert into public.itinerary_events(trip_id,title,city,starts_on,ends_on,kind,start_time,end_time,time_zone,location) values($1,'Visita','Madrid','2027-04-22','2027-04-22','activity',$2,$3,'Europe/Madrid','Prado') returning id";
+  await fails(sql, [trip, "10:00", null]);
+  await fails(sql, [trip, "12:00", "10:00"]);
+  const r = await db.query(sql, [trip, "10:00", "12:00"]);
+  expect(r.rows).toHaveLength(1);
+  await as(4);
+  expect(
+    (await db.query("select * from public.itinerary_events")).rows,
+  ).toHaveLength(0);
 });

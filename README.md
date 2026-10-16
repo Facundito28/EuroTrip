@@ -175,3 +175,13 @@ El organizador configura una cotización manual de consulta expresada como **1 E
 Los vuelos comprados en dólares se cargan desde «Nuevo gasto», categoría Transporte, moneda USD, importe original y cotización histórica **1 USD = X EUR**. Si cada persona pagó su pasaje, registrá un gasto por persona con un único participante. Si una persona pagó varios pasajes, registrá el total con los participantes correspondientes.
 
 Aplicar también `supabase/migrations/202610160003_personal_budgets.sql` después de las otras dos migraciones. Ya aplicada en el proyecto actual.
+
+## Guía e itinerario con mapas y calendario
+
+Guía para los viajeros: https://eurotrip-2027-travel-hq.vercel.app/guia (también desde Equipo). El organizador invita por correo y comparte un código privado; no se envía email automáticamente.
+
+La migración `202610160004_event_places_times.sql` agrega lugar/dirección, horas opcionales y zona del destino a los eventos. Ya aplicada al proyecto real. Las fechas de fin son inclusivas en Travel HQ; el exportador ICS usa correctamente un fin exclusivo para eventos de todo el día y UTC para eventos con hora. El calendario externo no depende de la zona horaria del dispositivo.
+
+Itinerario permite buscar lugares en un iframe de Google Maps que se carga solo al pulsar Buscar. No se configura ninguna API con facturación. No hay búsqueda offline ni garantías sobre la disponibilidad del proveedor externo. No se implementa geolocalización del usuario. Las pruebas de navegador sustituyen únicamente la respuesta del mapa; no demuestran el mapa real del proveedor.
+
+Agregar a Google Calendar abre la página de Google para revisar y guardar; no conecta cuentas ni envía el evento automáticamente. La exportación autenticada `/itinerary.ics` descarga un evento o toda la agenda para importar en calendarios compatibles. No hay sincronización bidireccional ni recordatorios automáticos dentro de Travel HQ. Reimportar puede duplicar entradas según el calendario; los cambios deben actualizarse también en la copia externa.

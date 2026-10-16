@@ -68,6 +68,10 @@ export type Event = {
   starts_on: string;
   ends_on: string;
   kind: "stay" | "transport" | "activity";
+  location?: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  time_zone?: string;
   notes: string;
   expense_id: string | null;
 };

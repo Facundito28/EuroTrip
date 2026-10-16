@@ -2535,3 +2535,53 @@ details[open] > summary svg {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.trip-map {
+  margin: 20px 0;
+  min-width: 0;
+}
+.trip-map iframe {
+  width: 100%;
+  height: 340px;
+  border: 0;
+  border-radius: 14px;
+  margin: 16px 0;
+}
+.trip-map form {
+  margin-top: 16px;
+  max-width: 540px;
+}
+.event-map {
+  margin: 16px 0;
+}
+.event-map summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.timeline-content .row-actions {
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .trip-map iframe {
+    height: 280px;
+  }
+  .event-map .trip-map {
+    padding: 12px;
+  }
+}
+
+.user-guide {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+.user-guide > h1 {
+  margin: 28px 0 12px;
+}
+.user-guide .panel {
+  margin-top: 20px;
+}
+.user-guide p {
+  line-height: 1.7;
+  margin-top: 12px;
+}

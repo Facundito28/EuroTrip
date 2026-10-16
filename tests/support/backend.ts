@@ -23,6 +23,12 @@ await db.exec(
 await db.exec(
   readFileSync("supabase/migrations/202610160003_personal_budgets.sql", "utf8"),
 );
+await db.exec(
+  readFileSync(
+    "supabase/migrations/202610160004_event_places_times.sql",
+    "utf8",
+  ),
+);
 const passwords = new Map<string, string>();
 const identities = new Map<string, { id: string; email: string }>();
 const tables = new Set([

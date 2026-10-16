@@ -12,6 +12,8 @@ import {
   validReceiptPath,
 } from "./receipts";
 import { passwordSchema } from "./password";
+import { eventDates, eventZones } from "./agenda";
+import type { Event } from "./types";
 import { categories } from "./types";
 
 export type ActionResult = {
@@ -364,8 +366,31 @@ export async function saveEvent(f: FormData) {
       expense_id: get(f, "expense_id")
         ? uuid.parse(get(f, "expense_id"))
         : null,
+      location: z.string().trim().max(300).parse(get(f, "location")),
+      start_time: get(f, "start_time")
+        ? z
+            .string()
+            .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+            .parse(get(f, "start_time"))
+        : null,
+      end_time: get(f, "end_time")
+        ? z
+            .string()
+            .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+            .parse(get(f, "end_time"))
+        : null,
+      time_zone: z
+        .enum(eventZones)
+        .parse(get(f, "time_zone") || "Europe/Madrid"),
       notes: z.string().max(2000).parse(get(f, "notes")),
     };
+    if (Boolean(record.start_time) !== Boolean(record.end_time))
+      throw new Error(
+        "Completá hora de inicio y fin, o dejá ambas vacías para todo el día.",
+      );
+    const dates = eventDates(record as Event);
+    if (dates.end <= dates.start)
+      throw new Error("El fin debe ser posterior al inicio.");
     const query = get(f, "id")
       ? client
           .from("itinerary_events")

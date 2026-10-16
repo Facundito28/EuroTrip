@@ -53,6 +53,8 @@ import {
 } from "./forms";
 import { ChangePasswordForm, JoinForm } from "./password-forms";
 import { TripCalendar } from "./calendar";
+import { TripMap } from "./trip-map";
+import { googleCalendarUrl } from "@/lib/agenda";
 import { PersonalBudget } from "./personal-budget";
 import { InstallButton } from "./pwa";
 const tabs = [
@@ -997,6 +999,7 @@ export function HQ({ data }: { data: HQData }) {
                   crear eventos; no asignamos reservas ni fechas inventadas.
                 </p>
               </section>
+              <TripMap initialQuery={data.trip.route_stops[0] ?? ""} />
               <TripCalendar
                 trip={data.trip}
                 events={data.events}
@@ -1007,6 +1010,16 @@ export function HQ({ data }: { data: HQData }) {
                   <div>
                     <h2>Agenda del viaje</h2>
                     <p>Alojamientos, transportes y actividades</p>
+                    <a
+                      className="button secondary small"
+                      href={`/itinerary.ics?trip=${data.trip.id}`}
+                    >
+                      Descargar agenda (.ics)
+                    </a>
+                    <p className="field-help">
+                      Importala en Apple Calendar, Google Calendar u Outlook. Es
+                      una copia: no se sincroniza automáticamente.
+                    </p>
                   </div>
                 </div>
                 {data.events.length ? (
@@ -1039,7 +1052,40 @@ export function HQ({ data }: { data: HQData }) {
                             <p>
                               <MapPin size={14} />
                               {e.city}
+                              {e.location ? ` · ${e.location}` : ""}
                             </p>
+                            {e.start_time && (
+                              <p>
+                                {e.start_time.slice(0, 5)} —{" "}
+                                {e.end_time?.slice(0, 5)} · {e.time_zone}
+                              </p>
+                            )}
+                            <details className="event-map">
+                              <summary>Ver lugar en el mapa</summary>
+                              <TripMap
+                                key={e.location + e.city + e.title}
+                                initialQuery={[
+                                  e.location || e.title,
+                                  e.city,
+                                ].join(", ")}
+                              />
+                            </details>
+                            <div className="row-actions">
+                              <a
+                                className="button secondary small"
+                                href={googleCalendarUrl(e)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                Agregar a Google Calendar
+                              </a>
+                              <a
+                                className="button secondary small"
+                                href={`/itinerary.ics?trip=${data.trip.id}&event=${e.id}`}
+                              >
+                                Guardar en calendario (.ics)
+                              </a>
+                            </div>
                             {e.notes && <p className="preserve">{e.notes}</p>}
                             {expense && (
                               <button
@@ -1290,6 +1336,11 @@ export function HQ({ data }: { data: HQData }) {
                     <p>Acceso privado con contraseña e invitación</p>
                   </div>
                 </div>
+                <p>
+                  <Link href="/guia" className="button secondary">
+                    Guía para compartir con mis amigos
+                  </Link>
+                </p>
                 {owner ? (
                   <InviteForm data={data} />
                 ) : (

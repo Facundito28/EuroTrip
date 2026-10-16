@@ -63,3 +63,11 @@ Migración 202610160003 aplicada al proyecto real: presupuestos personales con R
 El verificador remoto pasó también con el límite personal privado y la cotización manual exacta; completó las pruebas existentes y eliminó las cinco cuentas y todos los datos temporales. No se cargaron vuelos ni importes ficticios en el viaje del usuario.
 
 Actualización publicada: deployment `dpl_7e2S29tKPjo6zkacUxNVveXNEPPB`, estado READY, dominio estable sin cambios. Compilación y TypeScript aprobados en Vercel; ingreso HTTP 200 y exportación anónima HTTP 401 verificados tras publicar.
+
+## Actualización: guía, mapa y agenda exportable
+
+Guía pública `/guia`, disponible desde Equipo. Itinerario editable con dirección, horas y zona horaria local, migración 202610160004 aplicada sin cambiar eventos existentes. Mapa Google incrustado bajo búsqueda explícita; no usa claves de API ni facturación configurada. Exportación ICS autenticada y privada; enlace de creación en Google Calendar con revisión manual. No hay sincronización automática.
+
+Pruebas de calendario: fechas inclusivas/exclusivas, zona de verano e invierno, rechazo de hora inexistente por cambio estacional, escape de contenido e inyección y plegado de líneas UTF-8. Pruebas SQL de horarios y privacidad. Seis pruebas de navegador aprobadas en escritorio y móvil: horario del evento, enlace Google, descarga ICS con UTC correcto y mapa sin desbordamiento. La respuesta del proveedor de mapas se sustituye en esas pruebas. La comprobación directa real de maps.google.com encontró `Tunnel connection failed: 403 Forbidden` del proxy del entorno; no se afirma que se verificó el mapa externo. Dominios maps.google.com y www.google.com añadidos al borrador de red sin ampliar el acceso general; guardar el borrador no prueba su activación.
+
+51 pruebas unitarias/SQL aprobadas; lint y compilación con TypeScript aprobados. El verificador real confirmó direcciones y horarios compartidos entre miembros y aislamiento de no integrantes; eliminó las cinco cuentas y todos los datos temporales.

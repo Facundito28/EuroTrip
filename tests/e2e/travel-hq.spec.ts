@@ -44,6 +44,7 @@ test("private endpoints reject anonymous requests; login fits the viewport", asy
     page.getByRole("heading", { name: "Bienvenido al viaje" }),
   ).toBeVisible();
   expect((await request.get("/export")).status()).toBe(401);
+  expect((await request.get("/itinerary.ics")).status()).toBe(401);
   expect(
     (
       await request.get("/receipts/11111111-1111-4111-8111-111111111111")
@@ -233,6 +234,11 @@ test("real SQL workflow: create trip, budget, expenses, transfers, itinerary, sc
     .getByLabel("Título", { exact: true })
     .fill("Alojamiento de prueba");
   await event.getByLabel("Ciudad / destino").fill("Madrid");
+  await event
+    .getByLabel("Lugar o dirección", { exact: true })
+    .fill("Museo del Prado");
+  await event.getByLabel("Hora de inicio").fill("10:00");
+  await event.getByLabel("Hora de fin").fill("12:00");
   await event.getByLabel("Vincular gasto / reserva").selectOption({ index: 1 });
   await event.getByRole("button", { name: "Guardar en itinerario" }).click();
   await expect(event).not.toBeVisible();
@@ -242,6 +248,35 @@ test("real SQL workflow: create trip, budget, expenses, transfers, itinerary, sc
   await expect(
     page.getByRole("button", { name: "22 de abril de 2027, 1 eventos" }),
   ).toBeVisible();
+  const agendaLink = page.getByRole("link", {
+    name: "Descargar agenda (.ics)",
+  });
+  const agenda = await page.request.get(
+    (await agendaLink.getAttribute("href"))!,
+  );
+  expect(agenda.status()).toBe(200);
+  expect(await agenda.text()).toContain("DTSTART:20270422T080000Z");
+  expect(
+    await page
+      .getByRole("link", { name: "Agregar a Google Calendar" })
+      .getAttribute("href"),
+  ).toContain("calendar.google.com");
+  // Avoid external provider requests in local functional tests.
+  await page.route("https://maps.google.com/**", (route) =>
+    route.fulfill({
+      contentType: "text/html",
+      body: "<p>map provider test</p>",
+    }),
+  );
+  await page.getByText("Ver lugar en el mapa", { exact: true }).click();
+  const eventMap = page.locator(".event-map");
+  await eventMap.getByRole("button", { name: "Buscar en el mapa" }).click();
+  await expect(eventMap.locator("iframe")).toHaveAttribute("src", /Museo/);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
   await page.getByRole("button", { name: "Mes siguiente" }).click();
   await expect(
     page.getByText("mayo de 2027", { exact: true }).first(),
