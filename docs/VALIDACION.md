@@ -61,3 +61,5 @@ Migración 202610160003 aplicada al proyecto real: presupuestos personales con R
 45 pruebas unitarias/SQL aprobadas, incluyendo privacidad frente al organizador, rechazo de no integrantes, consumo por participación y conservación de gastos ante cambios de cotización. Seis pruebas de navegador aprobadas en escritorio y móvil, con guardado del límite y cotización, conversión del límite a USD y ausencia de desbordamiento horizontal. TypeScript, lint y compilación de producción pasaron.
 
 El verificador remoto pasó también con el límite personal privado y la cotización manual exacta; completó las pruebas existentes y eliminó las cinco cuentas y todos los datos temporales. No se cargaron vuelos ni importes ficticios en el viaje del usuario.
+
+Actualización publicada: deployment `dpl_7e2S29tKPjo6zkacUxNVveXNEPPB`, estado READY, dominio estable sin cambios. Compilación y TypeScript aprobados en Vercel; ingreso HTTP 200 y exportación anónima HTTP 401 verificados tras publicar.
