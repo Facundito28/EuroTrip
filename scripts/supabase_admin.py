@@ -18,7 +18,7 @@ MIGRATION = ROOT / "supabase/migrations/202610160001_travel_hq.sql"
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=["status", "apply", "configure-otp"], nargs="?", default="status")
+    parser.add_argument("operation", choices=["status", "apply", "configure-otp", "upgrade-password", "configure-password"], nargs="?", default="status")
     parser.add_argument("--project-ref", required=True)
     args = parser.parse_args()
     if not re.fullmatch(r"[a-z0-9]{20}", args.project_ref):
@@ -53,6 +53,26 @@ def main():
                 return 3
             query(MIGRATION.read_text())
             print("Travel HQ migration executed.")
+        if args.operation in ("upgrade-password", "configure-password"):
+            if len(before) != len(TABLES):
+                print("Apply the base migration first.", file=sys.stderr)
+                return 3
+            installed = query("select exists(select 1 from information_schema.columns where table_schema='public' and table_name='trip_invitations' and column_name='code_hash') as installed;")[0]['installed']
+            if args.operation == "upgrade-password":
+                if installed:
+                    print("Password invitation migration already installed; no reapplication.")
+                else:
+                    query((ROOT / "supabase/migrations/202610160002_password_invitations.sql").read_text())
+                    print("Secret invitation migration executed. Email-only joining is disabled.")
+            else:
+                # Never allow unverified email identities before closing the old
+                # email-only membership path. The migration is transactional.
+                safe = query("select exists(select 1 from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname='accept_invitation') as join_exists, regexp_replace(pg_get_functiondef('public.accept_invitations()'::regprocedure),'\\s','','g') like '%beginreturn;end;%' as legacy_disabled;")[0]
+                if not installed or not safe['join_exists'] or not safe['legacy_disabled']:
+                    print("Refusing Auth changes until private-code invitation security is installed.", file=sys.stderr)
+                    return 4
+                request("/config/auth", {"mailer_autoconfirm": True, "external_email_enabled": True, "disable_signup": False, "password_min_length": 12}, "PATCH")
+                print("Password registration enabled without confirmation emails. Invitations still require a private code.")
         if args.operation == "configure-otp":
             # Update this one template only. Preserve SMTP, Site URL, redirect URLs,
             # token lifetime, signup settings and all other existing configuration.
@@ -68,7 +88,8 @@ def main():
                 return 4
         auth = request("/config/auth")
         # This response may contain provider secrets. Report boolean status only.
-        print("Email enabled:", bool(auth.get("external_email_enabled")))
+        print("Email/password enabled:", bool(auth.get("external_email_enabled")))
+        print("Registration without confirmation email:", bool(auth.get("mailer_autoconfirm")))
         print("OTP code in template:", "{{ .Token }}" in (auth.get("mailer_templates_magic_link_content") or ""))
         print("Custom SMTP configured:", bool(auth.get("smtp_host")))
         return 0

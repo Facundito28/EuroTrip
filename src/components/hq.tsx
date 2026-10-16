@@ -51,6 +51,7 @@ import {
   InviteForm,
   ReceiptForm,
 } from "./forms";
+import { ChangePasswordForm, JoinForm } from "./password-forms";
 import { TripCalendar } from "./calendar";
 import { InstallButton } from "./pwa";
 const tabs = [
@@ -1262,7 +1263,13 @@ export function HQ({ data }: { data: HQData }) {
                     <h3>Invitaciones pendientes</h3>
                     {data.invitations.map((i) => (
                       <div key={i.id}>
-                        <span>{i.email}</span>
+                        <span>
+                          {i.email}
+                          <small className="muted">
+                            {" "}
+                            · Vence {dateLabel(i.expires_at.slice(0, 10))}
+                          </small>
+                        </span>
                         <DeleteButton
                           id={i.id}
                           trip={data.trip.id}
@@ -1278,18 +1285,11 @@ export function HQ({ data }: { data: HQData }) {
                 <div className="panel-heading">
                   <div>
                     <h2>Invitar al viaje</h2>
-                    <p>Acceso privado por correo confirmado</p>
+                    <p>Acceso privado con contraseña e invitación</p>
                   </div>
                 </div>
                 {owner ? (
-                  data.members.length + data.invitations.length < 4 ? (
-                    <InviteForm data={data} />
-                  ) : (
-                    <div className="notice">
-                      Los cuatro lugares están ocupados o reservados. Revocá una
-                      invitación pendiente si necesitás cambiar el correo.
-                    </div>
-                  )
+                  <InviteForm data={data} />
                 ) : (
                   <div className="notice">
                     El organizador administra las invitaciones. Solo los
@@ -1319,6 +1319,14 @@ export function HQ({ data }: { data: HQData }) {
                 )}
               </section>
               <div className="settings-stack">
+                <section className="panel">
+                  <h2>Tu contraseña</h2>
+                  <p>
+                    Podés cambiarla confirmando la actual. Guardala: no enviamos
+                    enlaces de recuperación por correo.
+                  </p>
+                  <ChangePasswordForm />
+                </section>
                 <section className="panel">
                   <h2>Tu app, siempre a mano</h2>
                   <p>
@@ -1356,6 +1364,14 @@ export function HQ({ data }: { data: HQData }) {
                 </section>
               </div>
             </div>
+          )}
+          {tab === "team" && (
+            <section className="panel">
+              <details>
+                <summary>Unirme a otro viaje con una invitación</summary>
+                <JoinForm />
+              </details>
+            </section>
           )}
           <footer className="page-footer">
             <span>

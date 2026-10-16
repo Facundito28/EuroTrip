@@ -10,6 +10,7 @@ const users = [
   "55555555-5555-4555-8555-555555555555",
 ];
 let trip: string, expense: string;
+const codes: Record<number, string> = {};
 async function as(index: number) {
   await db.exec("reset role");
   await db.query("select set_config('request.jwt.claim.sub',$1,false)", [
@@ -37,6 +38,12 @@ beforeAll(async () => {
   await db.exec(
     readFileSync("supabase/migrations/202610160001_travel_hq.sql", "utf8"),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/202610160002_password_invitations.sql",
+      "utf8",
+    ),
+  );
   await as(0);
   trip = (
     await db.query<{ id: string }>(
@@ -58,41 +65,82 @@ it("creates only the owner and never creates fictional expenses or prices", asyn
 });
 it("invites up to four people including pending invitations", async () => {
   for (let i = 1; i < 4; i++)
-    await db.query("select public.invite_member($1,$2)", [
-      trip,
-      `u${i}@test.com`,
-    ]);
-  await fails("select public.invite_member($1,$2)", [trip, "u4@test.com"]);
+    codes[i] = (
+      await db.query<{ code: string }>(
+        "select public.create_invitation($1,$2) code",
+        [trip, `u${i}@test.com`],
+      )
+    ).rows[0].code;
+  await fails("select public.create_invitation($1,$2)", [trip, "u4@test.com"]);
 });
-it("denies access and RPC mutation to nonmembers", async () => {
+it("denies outsiders and does not accept invitations by email alone", async () => {
   await as(4);
   expect((await db.query("select * from public.trips")).rows).toHaveLength(0);
-  await fails("select public.invite_member($1,$2)", [trip, "x@test.com"]);
+  await fails("select public.create_invitation($1,$2)", [trip, "x@test.com"]);
   expect(
     (await db.query<{ v: null }>("select public.hq_snapshot($1) v", [trip]))
       .rows[0].v,
   ).toBeNull();
-});
-it("accepts only confirmed matching emails", async () => {
-  await db.exec("reset role");
-  await db.query("update auth.users set email_confirmed_at=null where id=$1", [
-    users[1],
-  ]);
   await as(1);
   await db.query("select public.accept_invitations()");
   expect((await db.query("select * from public.trips")).rows).toHaveLength(0);
+  await fails("select public.accept_invitation($1)", ["a".repeat(32)]);
+  await as(4);
+  await fails("select public.accept_invitation($1)", [codes[1]]);
+});
+it("rotates invitation secrets and rejects expired codes", async () => {
+  await as(0);
+  const old = codes[1];
+  codes[1] = (
+    await db.query<{ code: string }>(
+      "select public.create_invitation($1,$2) code",
+      [trip, "u1@test.com"],
+    )
+  ).rows[0].code;
+  expect(codes[1]).not.toBe(old);
+  await as(1);
+  await fails("select public.accept_invitation($1)", [old]);
   await db.exec("reset role");
-  await db.query("update auth.users set email_confirmed_at=now() where id=$1", [
-    users[1],
-  ]);
+  await db.query(
+    "update public.trip_invitations set expires_at=now()-interval '1 day' where email='u1@test.com'",
+  );
+  await as(1);
+  await fails("select public.accept_invitation($1)", [codes[1]]);
+  await as(0);
+  codes[1] = (
+    await db.query<{ code: string }>(
+      "select public.create_invitation($1,$2) code",
+      [trip, "u1@test.com"],
+    )
+  ).rows[0].code;
+});
+it("stores hashes only and consumes each valid invitation once", async () => {
+  await as(0);
+  const rows = (
+    await db.query<{ code_hash: string }>(
+      "select code_hash from public.trip_invitations",
+    )
+  ).rows;
+  expect(
+    rows.every(
+      (r) =>
+        r.code_hash.length === 64 &&
+        !Object.values(codes).includes(r.code_hash),
+    ),
+  ).toBe(true);
   for (let i = 1; i < 4; i++) {
     await as(i);
-    await db.query("select public.accept_invitations()");
+    await db.query("select public.accept_invitation($1)", [codes[i]]);
+    await fails("select public.accept_invitation($1)", [codes[i]]);
   }
   await as(0);
   expect(
     (await db.query("select * from public.trip_members")).rows,
   ).toHaveLength(4);
+  expect(
+    (await db.query("select * from public.trip_invitations")).rows,
+  ).toHaveLength(0);
+  await fails("select public.invite_member($1,$2)", [trip, "old@test.com"]);
 });
 const saveSql =
   "select public.save_expense($1,$2,'Cena','Comida',$3,'USD',$4,'2027-04-22','2027-04-22',$5,$6,$7,'') id";

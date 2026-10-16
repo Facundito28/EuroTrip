@@ -1,10 +1,27 @@
 import { test, expect, type Page } from "@playwright/test";
-async function signIn(page: Page, email: string) {
+const TEST_PASSWORD = "Una-clave-larga-de-prueba-2027";
+async function signIn(
+  page: Page,
+  email: string,
+  create = true,
+  password = TEST_PASSWORD,
+) {
   await page.goto("/");
+  if (create)
+    await page
+      .getByRole("button", { name: "Crear cuenta", exact: true })
+      .click();
   await page.getByLabel("Correo electrónico").fill(email);
-  await page.getByRole("button", { name: "Recibir código de acceso" }).click();
-  await page.getByLabel(`Código enviado a ${email}`).fill("12345678");
-  await page.getByRole("button", { name: "Entrar a Travel HQ" }).click();
+  await page
+    .getByLabel(create ? "Elegí una contraseña" : "Contraseña", { exact: true })
+    .fill(password);
+  if (create) await page.getByLabel("Repetí la contraseña").fill(password);
+  await page
+    .getByRole("button", {
+      name: create ? "Crear mi cuenta" : "Entrar a Travel HQ",
+      exact: true,
+    })
+    .click();
 }
 async function navigate(page: Page, name: string) {
   const menu = page.getByRole("button", { name: "Abrir menú" });
@@ -46,6 +63,9 @@ test("real SQL workflow: create trip, budget, expenses, transfers, itinerary, sc
 }, info) => {
   const email = `owner-${info.project.name}@example.test`;
   await signIn(page, email);
+  await page
+    .getByText("Soy el organizador: crear un viaje", { exact: true })
+    .click();
   await page.getByLabel("Tu nombre", { exact: true }).fill("Viajero de prueba");
   await page.getByRole("button", { name: "Crear mi viaje" }).click();
   await expect(
@@ -66,15 +86,27 @@ test("real SQL workflow: create trip, budget, expenses, transfers, itinerary, sc
   await page
     .getByLabel("Correo del integrante")
     .fill(`friend-${info.project.name}@example.test`);
-  await page.getByRole("button", { name: "Autorizar correo" }).click();
-  await expect(
-    page.getByText("Correo autorizado.", { exact: false }),
-  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Generar invitación", exact: true })
+    .click();
+  const code = await page
+    .getByLabel("Código privado de invitación")
+    .inputValue();
+  expect(code).toMatch(/^[a-f0-9]{32}$/);
   const friend = await browser.newContext({
     viewport: { width: 390, height: 844 },
   });
   const friendPage = await friend.newPage();
   await signIn(friendPage, `friend-${info.project.name}@example.test`);
+  await expect(
+    friendPage.getByRole("heading", { name: "El viaje empieza acá" }),
+  ).toBeVisible();
+  await friendPage
+    .getByLabel("Código de invitación", { exact: true })
+    .fill(code);
+  await friendPage
+    .getByRole("button", { name: "Unirme al viaje", exact: true })
+    .click();
   await expect(
     friendPage.getByRole("heading", { name: "Tu viaje, bajo control." }),
   ).toBeVisible();
@@ -189,6 +221,37 @@ test("real SQL workflow: create trip, budget, expenses, transfers, itinerary, sc
   expect(csv.status()).toBe(200);
   expect(await csv.text()).toContain("Cena compartida de prueba");
   expect(await csv.text()).not.toContain("Cotización registrada");
+  await navigate(page, "Configuración");
+  await page
+    .getByLabel("Contraseña actual", { exact: true })
+    .fill(TEST_PASSWORD);
+  await page
+    .getByLabel("Elegí una contraseña", { exact: true })
+    .fill("Mi-nueva-clave-segura-2027");
+  await page
+    .getByLabel("Repetí la contraseña", { exact: true })
+    .fill("Mi-nueva-clave-segura-2027");
+  await page
+    .getByRole("button", { name: "Cambiar contraseña", exact: true })
+    .click();
+  await expect(
+    page.getByText("Contraseña actualizada.", { exact: false }),
+  ).toBeVisible();
+  const mobileMenu = page.getByRole("button", { name: "Abrir menú" });
+  if (await mobileMenu.isVisible()) await mobileMenu.click();
+  await page
+    .getByRole("button", { name: "Cerrar sesión", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Bienvenido al viaje" }),
+  ).toBeVisible();
+  await signIn(page, email, false, "Mi-nueva-clave-segura-2027");
+  await expect(
+    page.getByRole("heading", { name: "Tu viaje, bajo control." }),
+  ).toBeVisible();
+  await expect(
+    page.locator(".stat-card").filter({ hasText: "Gastos reales" }),
+  ).toContainText("100,01");
 });
 
 test("PWA shows offline fallback and never caches private pages", async ({

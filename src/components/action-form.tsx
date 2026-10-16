@@ -21,7 +21,7 @@ export function ActionForm({
   children: ReactNode;
   label?: string;
   className?: string;
-  onSuccess?: () => void;
+  onSuccess?: (result: ActionResult) => void;
   confirm?: string;
 }) {
   const [result, setResult] = useState<ActionResult | null>(null);
@@ -55,8 +55,9 @@ export function ActionForm({
             const response = await action(data);
             setResult(response);
             if (response.ok) {
+              if (response.redirectTo) router.push(response.redirectTo);
               router.refresh();
-              onSuccess?.();
+              onSuccess?.(response);
             }
           } catch {
             setResult({

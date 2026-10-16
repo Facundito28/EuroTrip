@@ -489,24 +489,77 @@ export function SettingsForm({ data }: { data: HQData }) {
   );
 }
 export function InviteForm({ data }: { data: HQData }) {
+  const [code, setCode] = useState(""),
+    [copied, setCopied] = useState(false);
+  const full = data.members.length + data.invitations.length >= 4;
   return (
-    <ActionForm action={inviteMember} label="Autorizar correo">
-      <HiddenTrip id={data.trip.id} />
-      <label>
-        Correo del integrante
-        <input
-          name="email"
-          type="email"
-          required
-          placeholder="amigo@ejemplo.com"
-        />
-      </label>
-      <p className="field-help">
-        Después compartí la URL de la app con tu amigo. Al ingresar y verificar
-        ese correo se unirá al grupo. Autorizarlo no envía una invitación
-        automática.
-      </p>
-    </ActionForm>
+    <>
+      {code && (
+        <div className="invitation-result" role="status">
+          <strong>Invitación lista para compartir</strong>
+          <p>
+            Copiá el código y compartilo en privado con ese amigo. Vence en 7
+            días.
+          </p>
+          <label>
+            Código privado de invitación
+            <input
+              readOnly
+              value={code}
+              onFocus={(event) => event.target.select()}
+            />
+          </label>
+          <button
+            type="button"
+            className="button secondary"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(code);
+                setCopied(true);
+              } catch {
+                setCopied(false);
+              }
+            }}
+          >
+            {copied ? "Código copiado" : "Copiar código"}
+          </button>
+          <p className="field-help">
+            Se muestra solo ahora. Si lo perdés, revocá la invitación y generá
+            otra.
+          </p>
+        </div>
+      )}
+      {full ? (
+        <div className="notice">
+          Los cuatro lugares están ocupados o reservados. Revocá una invitación
+          pendiente para liberar su lugar.
+        </div>
+      ) : (
+        <ActionForm
+          action={inviteMember}
+          label="Generar invitación"
+          onSuccess={(result) => {
+            setCode(result.invitationCode ?? "");
+            setCopied(false);
+          }}
+        >
+          <HiddenTrip id={data.trip.id} />
+          <label>
+            Correo del integrante
+            <input
+              name="email"
+              type="email"
+              required
+              placeholder="amigo@ejemplo.com"
+            />
+          </label>
+          <p className="field-help">
+            No se envían correos. Tu amigo crea su cuenta con ese correo y pega
+            el código que le compartís.
+          </p>
+        </ActionForm>
+      )}
+    </>
   );
 }
 export function ReceiptForm({

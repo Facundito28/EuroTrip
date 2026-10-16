@@ -5,11 +5,6 @@ export async function loadHQ(
   selectedTrip?: string,
 ): Promise<HQData | null> {
   const client = await supabase();
-  const { error: acceptError } = await client.rpc("accept_invitations");
-  if (acceptError)
-    throw new Error(
-      "No se pudieron verificar las invitaciones. Comprobá que la migración SQL esté aplicada.",
-    );
   const { data: trips, error } = await client
     .from("trips")
     .select("*")

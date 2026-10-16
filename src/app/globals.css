@@ -2421,3 +2421,69 @@ details[open] > summary svg {
     padding: 19px 12px;
   }
 }
+.auth-tabs {
+  display: flex;
+  background: #111913;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin: 22px 0;
+}
+.auth-tabs button {
+  flex: 1;
+  padding: 11px;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.auth-tabs button[aria-pressed="true"] {
+  background: #334629;
+  color: var(--lime);
+}
+.password-toggle {
+  margin: -5px 0 20px;
+}
+.auth-help {
+  margin-top: 22px !important;
+}
+.create-trip-details {
+  border-top: 1px solid var(--border);
+  margin-top: 27px;
+  padding-top: 8px;
+}
+.create-trip-details > summary {
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+.invitation-result {
+  border: 1px solid #536a3e;
+  background: #25371f;
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+.invitation-result > strong {
+  font-size: 14px;
+}
+.invitation-result p {
+  font-size: 11px;
+  margin: 12px 0;
+}
+.invitation-result input {
+  font-family: monospace;
+  font-size: 12px;
+}
+.invitation-result .field-help {
+  margin: 16px 0 0;
+}
+/* Keep account actions reachable on short phone and tablet screens. */
+.sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sidebar nav,
+.sidebar-bottom {
+  flex-shrink: 0;
+}

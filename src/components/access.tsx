@@ -9,8 +9,9 @@ import {
   Users,
   LogOut,
 } from "lucide-react";
-import { createTrip, login, verifyOtp, logout } from "@/lib/actions";
+import { createTrip, login, register, logout } from "@/lib/actions";
 import { ActionForm } from "./action-form";
+import { JoinForm, PasswordInputs } from "./password-forms";
 export function AccessScreen({
   mode,
   error,
@@ -20,8 +21,7 @@ export function AccessScreen({
   error?: string;
   email?: string;
 }) {
-  const [sent, setSent] = useState(false),
-    [address, setAddress] = useState("");
+  const [signup, setSignup] = useState(false);
   return (
     <main className="access-shell">
       <div className="access-brand">
@@ -93,8 +93,8 @@ export function AccessScreen({
                   <code>.env.local</code> o en Vercel.
                 </li>
                 <li>
-                  Configurá el correo de acceso con código según el README y
-                  reiniciá la aplicación.
+                  Configurá el acceso con contraseña según el README y reiniciá
+                  la aplicación.
                 </li>
               </ol>
               <div className="notice">
@@ -126,34 +126,37 @@ export function AccessScreen({
             <>
               <h2>El viaje empieza acá</h2>
               <p>
-                Ingresaste como <strong>{email}</strong>. Si te invitaron,
-                comprobá que sea el correo autorizado. Si sos el organizador,
-                creá el grupo.
+                Ingresaste como <strong>{email}</strong>. Si te invitaron, pegá
+                el código que te compartió el organizador.
               </p>
-              <ActionForm action={createTrip} label="Crear mi viaje">
-                <label>
-                  Tu nombre
-                  <input
-                    name="display_name"
-                    placeholder="¿Cómo te dicen?"
-                    required
-                    maxLength={80}
-                  />
-                </label>
-                <label>
-                  Nombre del viaje
-                  <input
-                    name="name"
-                    defaultValue="EuroTrip 2027"
-                    required
-                    maxLength={100}
-                  />
-                </label>
-              </ActionForm>
-              <p className="muted small">
-                El grupo empieza vacío, con presupuesto sin definir y sin
-                gastos. Podés invitar a tres amigos.
-              </p>
+              <JoinForm />
+              <details className="create-trip-details">
+                <summary>Soy el organizador: crear un viaje</summary>
+                <ActionForm action={createTrip} label="Crear mi viaje">
+                  <label>
+                    Tu nombre
+                    <input
+                      name="display_name"
+                      placeholder="¿Cómo te dicen?"
+                      required
+                      maxLength={80}
+                    />
+                  </label>
+                  <label>
+                    Nombre del viaje
+                    <input
+                      name="name"
+                      defaultValue="EuroTrip 2027"
+                      required
+                      maxLength={100}
+                    />
+                  </label>
+                </ActionForm>
+                <p className="muted small">
+                  El grupo empieza sin gastos ni presupuesto. Después podés
+                  invitar a tres amigos.
+                </p>
+              </details>
               <form action={logout}>
                 <button className="button ghost">
                   <LogOut size={16} />
@@ -163,59 +166,49 @@ export function AccessScreen({
             </>
           ) : (
             <>
-              <h2>{sent ? "Revisá tu correo" : "Bienvenido al viaje"}</h2>
+              <h2>{signup ? "Creá tu cuenta" : "Bienvenido al viaje"}</h2>
               <p>
-                {sent
-                  ? "Ingresá el código que recibiste. No compartas este código con nadie."
-                  : "Ingresá con tu correo. Si estás invitado, te sumaremos automáticamente a tu grupo."}
+                Ingresá con correo y contraseña. Para acceder al viaje de tus
+                amigos necesitás su código de invitación.
               </p>
-              {!sent ? (
-                <ActionForm
-                  action={login}
-                  label="Recibir código de acceso"
-                  onSuccess={() => setSent(true)}
-                >
-                  <label>
-                    Correo electrónico
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="vos@ejemplo.com"
-                      autoComplete="email"
-                      required
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                    />
-                  </label>
-                </ActionForm>
-              ) : (
-                <>
-                  <ActionForm action={verifyOtp} label="Entrar a Travel HQ">
-                    <input type="hidden" name="email" value={address} />
-                    <label>
-                      Código enviado a {address}
-                      <input
-                        name="token"
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        pattern="[0-9]{6,10}"
-                        maxLength={10}
-                        required
-                        placeholder="Código de acceso"
-                      />
-                    </label>
-                  </ActionForm>
-                  <button
-                    className="button ghost"
-                    onClick={() => setSent(false)}
-                  >
-                    Cambiar correo o pedir otro código
-                  </button>
-                </>
-              )}
+              <div
+                className="auth-tabs"
+                role="group"
+                aria-label="Acceso a la cuenta"
+              >
+                <button aria-pressed={!signup} onClick={() => setSignup(false)}>
+                  Ingresar
+                </button>
+                <button aria-pressed={signup} onClick={() => setSignup(true)}>
+                  Crear cuenta
+                </button>
+              </div>
+              <ActionForm
+                key={signup ? "register" : "login"}
+                action={signup ? register : login}
+                label={signup ? "Crear mi cuenta" : "Entrar a Travel HQ"}
+              >
+                <label>
+                  Correo electrónico
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="vos@ejemplo.com"
+                    autoComplete="email"
+                    required
+                    maxLength={254}
+                  />
+                </label>
+                <PasswordInputs registration={signup} />
+              </ActionForm>
+              <p className="field-help auth-help">
+                No enviamos correos ni códigos de acceso. Guardá tu contraseña:
+                la recuperación por correo no está habilitada.
+              </p>
               <div className="notice">
                 <LockKeyhole size={16} />
-                Acceso seguro. Solo tus compañeros pueden ver tu viaje.
+                Tu correo identifica la cuenta. Solo una invitación privada
+                válida permite entrar a un grupo existente.
               </div>
             </>
           )}

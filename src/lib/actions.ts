@@ -5,9 +5,15 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { supabase } from "./supabase/server";
 import { currencies, parseMoney, toEur, validateRate } from "./money";
+import { passwordSchema } from "./password";
 import { categories } from "./types";
 
-export type ActionResult = { ok: boolean; message: string };
+export type ActionResult = {
+  ok: boolean;
+  message: string;
+  invitationCode?: string;
+  redirectTo?: string;
+};
 const uuid = z.uuid();
 const text = (max: number) =>
   z.string().trim().min(1, "Completá los campos obligatorios.").max(max);
@@ -79,32 +85,76 @@ export async function login(f: FormData): Promise<ActionResult> {
       .email()
       .max(254)
       .parse(get(f, "email").trim().toLowerCase());
+    const password = z
+      .string()
+      .min(1, "Ingresá tu contraseña.")
+      .max(128)
+      .parse(get(f, "password"));
     const client = await supabase();
-    // Email OTP works on all deployment domains, with no redirect URL dependency.
-    const { error } = await client.auth.signInWithOtp({ email });
+    const { error } = await client.auth.signInWithPassword({ email, password });
     if (error)
-      throw new Error(
-        "No pudimos enviar el código. Revisá el correo o intentá de nuevo en un minuto.",
-      );
-    return "Revisá tu correo: te enviamos un código de acceso.";
+      throw new Error("No pudimos ingresar. Revisá tu correo y contraseña.");
+    return "Sesión iniciada.";
   });
 }
-export async function verifyOtp(f: FormData): Promise<ActionResult> {
+export async function register(f: FormData): Promise<ActionResult> {
   return perform(async () => {
-    const email = z.email().parse(get(f, "email").trim().toLowerCase());
-    const token = z
-      .string()
-      .regex(/^\d{6,10}$/, "Ingresá el código recibido por correo.")
-      .parse(get(f, "token").trim());
+    const email = z
+      .email()
+      .max(254)
+      .parse(get(f, "email").trim().toLowerCase());
+    const password = passwordSchema.parse(get(f, "password"));
+    if (password !== get(f, "password_confirm"))
+      throw new Error("Las contraseñas no coinciden.");
     const client = await supabase();
-    const { error } = await client.auth.verifyOtp({
-      email,
-      token,
-      type: "email",
-    });
+    const { data, error } = await client.auth.signUp({ email, password });
     if (error)
-      throw new Error("El código es incorrecto o venció. Solicitá uno nuevo.");
-    return "Sesión iniciada.";
+      throw new Error(
+        "No pudimos crear la cuenta. Si ya existe, ingresá con tu contraseña. Revisá también los requisitos y reintentá más tarde.",
+      );
+    if (!data.session)
+      throw new Error(
+        "No se pudo iniciar sesión. Revisá si ya tenés una cuenta o si el proyecto todavía exige confirmación por correo.",
+      );
+    return "Cuenta creada. Ahora podés crear tu viaje o ingresar con una invitación.";
+  });
+}
+export async function joinTrip(f: FormData): Promise<ActionResult> {
+  let tripId = "";
+  const result = await perform(async () => {
+    const { client } = await session();
+    const code = z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-f0-9]{32}$/, "Pegá el código completo de tu invitación.")
+      .parse(get(f, "code"));
+    const { data, error } = await client.rpc("accept_invitation", {
+      p_code: code,
+    });
+    if (error) throw dbError(error);
+    tripId = uuid.parse(data);
+    return "Ya formás parte del viaje.";
+  });
+  return result.ok ? { ...result, redirectTo: `/?trip=${tripId}` } : result;
+}
+export async function changePassword(f: FormData): Promise<ActionResult> {
+  return perform(async () => {
+    const { client, user } = await session();
+    const password = passwordSchema.parse(get(f, "password"));
+    if (password !== get(f, "password_confirm"))
+      throw new Error("Las contraseñas no coinciden.");
+    const { error: check } = await client.auth.signInWithPassword({
+      email: user.email!,
+      password: get(f, "current_password"),
+    });
+    if (check) throw new Error("La contraseña actual es incorrecta.");
+    const { error } = await client.auth.updateUser({ password });
+    if (error)
+      throw new Error(
+        "No se pudo actualizar la contraseña. Reintentá más tarde.",
+      );
+    return "Contraseña actualizada. Guardala en un gestor de contraseñas.";
   });
 }
 export async function logout() {
@@ -273,16 +323,22 @@ export async function saveTrip(f: FormData) {
     return "Configuración guardada.";
   });
 }
-export async function inviteMember(f: FormData) {
-  return perform(async () => {
+export async function inviteMember(f: FormData): Promise<ActionResult> {
+  let code = "";
+  const result = await perform(async () => {
     const { client } = await session();
-    const { error } = await client.rpc("invite_member", {
+    const { data, error } = await client.rpc("create_invitation", {
       p_trip: uuid.parse(get(f, "trip_id")),
       p_email: z.email().max(254).parse(get(f, "email").trim().toLowerCase()),
     });
     if (error) throw dbError(error);
-    return "Correo autorizado. Compartí la dirección de la aplicación con tu amigo para que ingrese con ese correo.";
+    code = z
+      .string()
+      .regex(/^[a-f0-9]{32}$/)
+      .parse(data);
+    return "Invitación creada. Compartí el código de forma privada con tu amigo.";
   });
+  return result.ok ? { ...result, invitationCode: code } : result;
 }
 export async function saveEvent(f: FormData) {
   return perform(async () => {

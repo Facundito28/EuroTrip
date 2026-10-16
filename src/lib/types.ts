@@ -92,6 +92,7 @@ export type Invitation = {
   trip_id: string;
   email: string;
   created_at: string;
+  expires_at: string;
 };
 export type Receipt = {
   id: string;

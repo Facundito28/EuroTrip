@@ -14,6 +14,13 @@ alter table storage.objects enable row level security;grant select,insert,delete
 await db.exec(
   readFileSync("supabase/migrations/202610160001_travel_hq.sql", "utf8"),
 );
+await db.exec(
+  readFileSync(
+    "supabase/migrations/202610160002_password_invitations.sql",
+    "utf8",
+  ),
+);
+const passwords = new Map<string, string>();
 const identities = new Map<string, { id: string; email: string }>();
 const tables = new Set([
   "trips",
@@ -29,7 +36,8 @@ const tables = new Set([
 ]);
 const functions = new Set([
   "create_trip",
-  "invite_member",
+  "create_invitation",
+  "accept_invitation",
   "accept_invitations",
   "save_expense",
   "mark_expense_paid",
@@ -71,30 +79,38 @@ createServer((req, res) => {
     try {
       if (url.pathname === "/health") return reply(200, { ready: true });
       if (url.pathname === "/reset") {
-        await db.exec("reset role; truncate public.trips cascade");
+        await db.exec(
+          "reset role; truncate public.trips cascade; delete from auth.users",
+        );
+        identities.clear();
+        passwords.clear();
         return reply(200, {});
       }
-      if (url.pathname === "/auth/v1/otp") return reply(200, {});
-      if (url.pathname === "/auth/v1/verify") {
-        if (body.token !== "12345678")
-          return reply(403, { message: "Invalid test OTP" });
+      if (
+        url.pathname === "/auth/v1/signup" ||
+        url.pathname === "/auth/v1/token"
+      ) {
         const email = String(body.email).toLowerCase();
         let user = identities.get(email);
-        if (!user) {
+        if (url.pathname.endsWith("/signup")) {
+          if (user) return reply(400, { message: "Already registered" });
           user = { id: crypto.randomUUID(), email };
           identities.set(email, user);
+          passwords.set(email, String(body.password));
           await db.exec("reset role");
           await db.query("insert into auth.users values($1,$2,now())", [
             user.id,
             email,
           ]);
+        } else if (!user || passwords.get(email) !== body.password) {
+          return reply(400, { message: "Invalid credentials" });
         }
         return reply(200, {
           access_token: jwt(user),
           refresh_token: "test-refresh",
           token_type: "bearer",
           expires_in: 3600,
-          user: userObject(user),
+          user: userObject(user!),
         });
       }
       const token = req.headers.authorization?.replace("Bearer ", "");
@@ -106,6 +122,10 @@ createServer((req, res) => {
           );
           user = identities.get(claims.email);
         } catch {}
+      }
+      if (url.pathname === "/auth/v1/user" && req.method === "PUT" && user) {
+        passwords.set(user.email, String(body.password));
+        return reply(200, userObject(user));
       }
       if (url.pathname === "/auth/v1/user")
         return user
