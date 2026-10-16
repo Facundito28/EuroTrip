@@ -11,8 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "format": "prettier --write src tests \"*.ts\" \"*.mjs\" package.json README.md .github",
-    "format:check": "prettier --check src tests \"*.ts\" \"*.mjs\" package.json README.md .github"
+    "format": "prettier --write src tests \"*.ts\" \"*.mjs\" \"*.json\" README.md docs .github",
+    "format:check": "prettier --check src tests \"*.ts\" \"*.mjs\" \"*.json\" README.md docs .github"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
