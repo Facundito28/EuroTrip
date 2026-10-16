@@ -302,6 +302,7 @@ export function HQ({ data }: { data: HQData }) {
           {tabs.map(([id, label, Icon]) => (
             <button
               key={id}
+              aria-label={id === "dashboard" ? "Resumen" : label}
               className={tab === id ? "active" : ""}
               aria-current={tab === id ? "page" : undefined}
               onClick={() => navigate(id)}
