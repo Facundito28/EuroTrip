@@ -81,3 +81,5 @@ Migración 202610160005 aplicada. Cada miembro puede editar su nombre visible; e
 52 pruebas unitarias/SQL aprobadas; seis pruebas de navegador escritorio/móvil aprobadas incluyendo edición propia por el amigo y posterior edición por el organizador. Se verificó que otro viajero no ve controles para editar a los demás, y que los selectores de gastos y transferencias usan el nombre actualizado. Lint y compilación de producción aprobados.
 
 Verificación en Supabase real aprobada: edición propia y por organizador, rechazo de edición ajena por otro viajero y limpieza completa de cinco cuentas temporales y sus datos.
+
+Publicación READY `dpl_FuBFeRRojn8zfvCuXa3aRfYYCr3Q`; dominio estable comprobado con ingreso HTTP 200 y guía HTTP 200 que incluye edición de nombres.
