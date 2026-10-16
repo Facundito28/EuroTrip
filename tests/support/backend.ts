@@ -20,6 +20,9 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  readFileSync("supabase/migrations/202610160003_personal_budgets.sql", "utf8"),
+);
 const passwords = new Map<string, string>();
 const identities = new Map<string, { id: string; email: string }>();
 const tables = new Set([
@@ -43,6 +46,7 @@ const functions = new Set([
   "mark_expense_paid",
   "delete_expense",
   "hq_snapshot",
+  "save_personal_budget",
 ]);
 const identifier = (s: string) => {
   if (!/^[a-z_]+$/.test(s)) throw new Error("Invalid test identifier");

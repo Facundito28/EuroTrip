@@ -492,3 +492,34 @@ export async function completeReceiptUpload(
     return "Comprobante guardado de forma privada.";
   });
 }
+
+export async function savePersonalBudget(f: FormData) {
+  return perform(async () => {
+    const { client } = await session();
+    const { error } = await client.rpc("save_personal_budget", {
+      p_trip: uuid.parse(get(f, "trip_id")),
+      p_budget: parseMoney(get(f, "personal_budget")),
+    });
+    if (error) throw dbError(error);
+    return "Tu presupuesto personal quedó guardado.";
+  });
+}
+export async function saveDisplayRate(f: FormData) {
+  return perform(async () => {
+    const { client } = await session();
+    const { data, error } = await client
+      .from("trips")
+      .update({
+        usd_per_eur: validateRate(get(f, "usd_per_eur")),
+        display_rate_date: date.parse(get(f, "display_rate_date")),
+      })
+      .eq("id", uuid.parse(get(f, "trip_id")))
+      .select("id");
+    if (error) throw dbError(error);
+    if (!data?.length)
+      throw new Error(
+        "Solo el organizador puede cambiar la cotización del grupo.",
+      );
+    return "Cotización de consulta guardada. Los gastos originales no cambiaron.";
+  });
+}

@@ -53,3 +53,11 @@ La conexión automática del repositorio desde Vercel falló por acceso GitHub. 
 Se consultó https://vercel.com/get-started.md. CLI instalada y cuenta autenticada. El plugin y skills globales no pudieron instalarse por rutas de usuario no escribibles; el MCP no pudo persistirse porque la configuración de Codex es de solo lectura. Estas integraciones opcionales no se presentan como configuradas ni impidieron publicar con CLI.
 
 La comprobación adicional de navegador contra producción encontró `ERR_CERT_AUTHORITY_INVALID` en el Chromium aislado ante el certificado del proxy del entorno; no se deshabilitó TLS. Las comprobaciones HTTP con la cadena de confianza del entorno sí pasaron. Las pruebas locales de escritorio y móvil descritas arriba pasaron; no sustituyen pruebas físicas en Safari iOS y Chrome Android.
+
+## Actualización: presupuesto personal y USD/EUR
+
+Migración 202610160003 aplicada al proyecto real: presupuestos personales con RLS por identidad y cotización de consulta del grupo editable solamente por el organizador. El snapshot incluye únicamente el límite propio. Los gastos conservan importe original y cotización histórica.
+
+45 pruebas unitarias/SQL aprobadas, incluyendo privacidad frente al organizador, rechazo de no integrantes, consumo por participación y conservación de gastos ante cambios de cotización. Seis pruebas de navegador aprobadas en escritorio y móvil, con guardado del límite y cotización, conversión del límite a USD y ausencia de desbordamiento horizontal. TypeScript, lint y compilación de producción pasaron.
+
+El verificador remoto pasó también con el límite personal privado y la cotización manual exacta; completó las pruebas existentes y eliminó las cinco cuentas y todos los datos temporales. No se cargaron vuelos ni importes ficticios en el viaje del usuario.

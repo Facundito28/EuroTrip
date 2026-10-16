@@ -72,6 +72,39 @@ test("real SQL workflow: create trip, budget, expenses, transfers, itinerary, sc
   await expect(
     page.getByRole("heading", { name: "Tu viaje, bajo control." }),
   ).toBeVisible();
+  const budgetPanel = page.locator(".personal-budget");
+  await budgetPanel
+    .getByText("Editar mi límite personal", { exact: true })
+    .click();
+  await page.getByLabel("Mi presupuesto personal · EUR").fill("1000");
+  await page
+    .getByRole("button", { name: "Guardar mi presupuesto", exact: true })
+    .click();
+  await expect(
+    page.getByText("Tu presupuesto personal quedó guardado."),
+  ).toBeVisible();
+  await budgetPanel
+    .getByText("Configurar cotización USD/EUR", { exact: true })
+    .click();
+  await page.getByLabel("Dólares por 1 euro").fill("1.10");
+  await page
+    .getByRole("button", { name: "Guardar cotización", exact: true })
+    .click();
+  await expect(
+    page.getByText(
+      "Cotización de consulta guardada. Los gastos originales no cambiaron.",
+    ),
+  ).toBeVisible();
+  await page.getByLabel("Moneda de los totales").selectOption("USD");
+  await expect(budgetPanel.locator(".personal-totals").first()).toContainText(
+    "1.100,00",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByLabel("Moneda de los totales").selectOption("EUR");
   const sessionCookies = (await page.context().cookies()).filter(
     (c) => c.name.startsWith("sb-") && c.name.includes("auth-token"),
   );

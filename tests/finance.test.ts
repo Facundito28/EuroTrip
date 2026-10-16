@@ -1,5 +1,10 @@
 import { expect, it } from "vitest";
-import { balances, suggestedTransfers, totals } from "../src/lib/finance";
+import {
+  balances,
+  suggestedTransfers,
+  totals,
+  personalTotals,
+} from "../src/lib/finance";
 import { expensesCsv } from "../src/lib/csv";
 import type { Expense, Member, Settlement } from "../src/lib/types";
 const members = ["a", "b", "c", "d"].map((user_id) => ({
@@ -131,4 +136,26 @@ it("CSV preserves original exchange metadata and protects against formulas", () 
   expect(csv).toContain("' =HYPERLINK");
   expect(csv).toContain('""comillas""');
   expect(csv).toContain('"100.00";"EUR";"1";"2027-04-22";"100.00"');
+});
+
+it("personal spending counts only own shares and keeps reservations separate", () => {
+  const expenses = [
+    expense("flight", "paid", 80000, "b"),
+    expense("stay", "reserved", 40000),
+    expense("idea", "estimated", 20000),
+    expense("other", "paid", 90000),
+  ];
+  const shares = [
+    { expense_id: "flight", member_id: "a", amount_minor: 20000 },
+    { expense_id: "stay", member_id: "a", amount_minor: 10000 },
+    { expense_id: "idea", member_id: "a", amount_minor: 5000 },
+  ];
+  expect(personalTotals("a", expenses, shares, 25000)).toEqual({
+    paid: 20000,
+    reserved: 10000,
+    estimated: 5000,
+    available: -5000,
+    projected: 35000,
+  });
+  expect(personalTotals("c", expenses, shares, 10000).paid).toBe(0);
 });

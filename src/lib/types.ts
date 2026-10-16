@@ -14,6 +14,8 @@ export type Trip = {
   owner_id: string;
   route_stops: string[];
   budget_minor: number;
+  usd_per_eur?: string | null;
+  display_rate_date?: string | null;
   starts_on: string;
   ends_on: string;
 };
@@ -113,4 +115,5 @@ export type HQData = {
   invitations: Invitation[];
   receipts: Receipt[];
   userId: string;
+  personal_budget_minor?: number | null;
 };

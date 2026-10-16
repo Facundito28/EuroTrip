@@ -66,3 +66,21 @@ export function suggestedTransfers(net: Record<string, number>) {
   }
   return result;
 }
+
+/** Consumption follows participation, independently of who paid or settled debts. */
+export function personalTotals(
+  userId: string,
+  expenses: Expense[],
+  shares: Share[],
+  budget: number,
+) {
+  const amounts = new Map(
+    shares
+      .filter((s) => s.member_id === userId)
+      .map((s) => [s.expense_id, s.amount_minor]),
+  );
+  return totals(
+    expenses.map((e) => ({ ...e, eur_minor: amounts.get(e.id) ?? 0 })),
+    budget,
+  );
+}

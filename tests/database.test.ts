@@ -44,6 +44,12 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/202610160003_personal_budgets.sql",
+      "utf8",
+    ),
+  );
   await as(0);
   trip = (
     await db.query<{ id: string }>(
@@ -341,4 +347,63 @@ it("returns exchange rates as exact strings in consistent snapshots", async () =
     [trip],
   );
   expect(typeof result.rows[0].v.expenses[0].rate_to_eur).toBe("string");
+});
+
+it("keeps personal limits private, even from the organizer; rejects outsiders", async () => {
+  await as(1);
+  await db.query("select public.save_personal_budget($1,12345)", [trip]);
+  const r = await db.query<{ v: { personal_budget_minor: number } }>(
+    "select public.hq_snapshot($1) v",
+    [trip],
+  );
+  expect(r.rows[0].v.personal_budget_minor).toBe(12345);
+  await as(0);
+  expect(
+    (await db.query("select * from public.personal_budgets")).rows,
+  ).toHaveLength(0);
+  expect(
+    (
+      await db.query(
+        "update public.personal_budgets set budget_minor=999 returning user_id",
+      )
+    ).rows,
+  ).toHaveLength(0);
+  await as(4);
+  await fails("select public.save_personal_budget($1,500)", [trip]);
+  await as(1);
+  await fails("select public.save_personal_budget($1,-1)", [trip]);
+});
+it("only organizer can set display FX; historical flight prices stay unchanged", async () => {
+  await as(1);
+  expect(
+    (
+      await db.query(
+        "update public.trips set usd_per_eur=1.1,display_rate_date='2026-10-16' where id=$1 returning id",
+        [trip],
+      )
+    ).rows,
+  ).toHaveLength(0);
+  await as(0);
+  const before = (
+    await db.query(
+      "select amount_minor,rate_to_eur,eur_minor from public.expenses",
+    )
+  ).rows;
+  await db.query(
+    "update public.trips set usd_per_eur=1.12345678,display_rate_date='2026-10-16' where id=$1",
+    [trip],
+  );
+  expect(
+    (
+      await db.query(
+        "select amount_minor,rate_to_eur,eur_minor from public.expenses",
+      )
+    ).rows,
+  ).toEqual(before);
+  const r = await db.query<{ v: { trip: { usd_per_eur: string } } }>(
+    "select public.hq_snapshot($1) v",
+    [trip],
+  );
+  expect(r.rows[0].v.trip.usd_per_eur).toBe("1.12345678");
+  await fails("update public.trips set usd_per_eur=0 where id=$1", [trip]);
 });

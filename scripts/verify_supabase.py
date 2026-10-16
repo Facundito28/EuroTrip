@@ -87,6 +87,13 @@ def main():
                 assert error.code == 400
             assert rpc(tokens[index], "accept_invitation", {"p_code": code}) == trip
         print("PASS: four members joined; email alone and wrong identities cannot join.")
+        rpc(tokens[1], "save_personal_budget", {"p_trip": trip, "p_budget": 123456})
+        assert rpc(tokens[1], "hq_snapshot", {"p_trip": trip})["personal_budget_minor"] == 123456
+        assert rpc(owner, "hq_snapshot", {"p_trip": trip})["personal_budget_minor"] is None
+        assert request(BASE + "/rest/v1/personal_budgets?select=budget_minor", bearer=owner) == []
+        request(BASE + "/rest/v1/trips?id=eq." + trip, "PATCH", {"usd_per_eur": "1.10", "display_rate_date": "2026-10-16"}, owner)
+        assert rpc(owner, "hq_snapshot", {"p_trip": trip})["trip"]["usd_per_eur"] == "1.10000000"
+        print("PASS: private personal limits and exact manual display FX on real Supabase.")
         payload = {"p_id": None, "p_trip": trip, "p_description": "Verificación temporal", "p_category": "Comida", "p_amount": 10001, "p_currency": "USD", "p_rate": "0.9", "p_rate_date": "2027-04-22", "p_date": "2027-04-22", "p_status": "reserved", "p_payer": users[0], "p_members": users[:4], "p_notes": "Registro temporal; eliminado al terminar.", "p_request": str(uuid.uuid4())}
         expense = rpc(owner, "save_expense", payload)
         assert rpc(owner, "save_expense", payload) == expense

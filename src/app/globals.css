@@ -2487,3 +2487,51 @@ details[open] > summary svg {
 .sidebar-bottom {
   flex-shrink: 0;
 }
+
+.personal-budget {
+  margin-bottom: 24px;
+  min-width: 0;
+}
+.personal-budget .panel-heading {
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.personal-budget .panel-heading label {
+  max-width: 160px;
+}
+.personal-totals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin: 20px 0;
+}
+.personal-totals span,
+.personal-totals strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.personal-totals span {
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.personal-totals strong {
+  font-size: 21px;
+}
+.personal-budget details {
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+.personal-budget summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+.personal-budget form {
+  margin-top: 14px;
+  max-width: 480px;
+}
+@media (max-width: 600px) {
+  .personal-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

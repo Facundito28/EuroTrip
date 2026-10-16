@@ -53,6 +53,7 @@ import {
 } from "./forms";
 import { ChangePasswordForm, JoinForm } from "./password-forms";
 import { TripCalendar } from "./calendar";
+import { PersonalBudget } from "./personal-budget";
 import { InstallButton } from "./pwa";
 const tabs = [
   ["dashboard", "Vue d’ensemble", LayoutDashboard],
@@ -517,6 +518,7 @@ export function HQ({ data }: { data: HQData }) {
                   <small>Presupuesto − pagos − reservas</small>
                 </div>
               </section>
+              <PersonalBudget data={data} />
               <div className="dashboard-columns">
                 <section className="panel">
                   <div className="panel-heading">

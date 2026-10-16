@@ -165,3 +165,13 @@ https://eurotrip-2027-travel-hq.vercel.app
 Creá tu cuenta con correo y contraseña. El organizador crea el viaje y genera invitaciones privadas para los otros tres integrantes. En iPhone/iPad: Safari → Compartir → Agregar a inicio. En Android: Chrome → menú → Instalar aplicación o Agregar a pantalla principal. También funciona desde el navegador en PC. La instalación física en iOS y Android queda pendiente de verificar.
 
 El despliegue se realizó con Vercel CLI; la integración automática GitHub–Vercel todavía no está conectada. Ver `docs/VALIDACION.md` para evidencia y limitaciones.
+
+## Presupuesto personal y consulta en dólares
+
+En el dashboard, «Mi presupuesto» permite guardar un límite personal en EUR, privado para cada integrante, y ver consumos, reservas y saldo disponible según su participación en cada gasto. No depende de quién pagó. Los límites individuales son independientes del presupuesto grupal.
+
+El organizador configura una cotización manual de consulta expresada como **1 EUR = X USD**, con fecha. El selector EUR/USD convierte la vista personal y los totales del grupo usando esa cotización; sin cotización no se inventa ningún equivalente. Las tarjetas financieras originales siguen etiquetadas en EUR. Esta consulta no recalcula gastos ni deudas históricas.
+
+Los vuelos comprados en dólares se cargan desde «Nuevo gasto», categoría Transporte, moneda USD, importe original y cotización histórica **1 USD = X EUR**. Si cada persona pagó su pasaje, registrá un gasto por persona con un único participante. Si una persona pagó varios pasajes, registrá el total con los participantes correspondientes.
+
+Aplicar también `supabase/migrations/202610160003_personal_budgets.sql` después de las otras dos migraciones. Ya aplicada en el proyecto actual.
