@@ -36,7 +36,7 @@ No se imprimieron ni guardaron contraseñas, códigos privados, tokens o enlaces
 - No se verifica la propiedad del correo. El código de invitación proporciona la autorización al grupo y nunca se sustituye por una coincidencia de correo.
 - La recuperación automática de contraseña por email queda fuera de este flujo; requiere SMTP o intervención administrativa con comprobación de identidad.
 - Todavía no se publicó la aplicación en Vercel ni se validó una instalación PWA en dispositivos físicos con el dominio final.
-- No se hizo merge a `main` ni push al remoto. Un push puede disparar deployments automáticos y sigue pendiente de autorización.
+- No se hizo merge a `main`. Con autorización de publicación, se subió la rama `work` a GitHub con la versión validada. La autorización de cuenta Vercel continúa pendiente; no se confirmó un deployment.
 
 ## Preparación de Vercel
 
