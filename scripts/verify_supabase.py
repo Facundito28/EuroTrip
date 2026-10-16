@@ -87,6 +87,14 @@ def main():
                 assert error.code == 400
             assert rpc(tokens[index], "accept_invitation", {"p_code": code}) == trip
         print("PASS: four members joined; email alone and wrong identities cannot join.")
+        request(BASE + "/rest/v1/trip_members?trip_id=eq." + trip + "&user_id=eq." + users[1], "PATCH", {"display_name": "Nombre propio temporal"}, tokens[1])
+        renamed = rpc(tokens[1], "hq_snapshot", {"p_trip": trip})["members"]
+        assert next(m for m in renamed if m["user_id"] == users[1])["display_name"] == "Nombre propio temporal"
+        denied = request(BASE + "/rest/v1/trip_members?trip_id=eq." + trip + "&user_id=eq." + users[0], "PATCH", {"display_name": "No permitido"}, tokens[1])
+        assert denied == []
+        request(BASE + "/rest/v1/trip_members?trip_id=eq." + trip + "&user_id=eq." + users[1], "PATCH", {"display_name": "Nombre por organizador"}, owner)
+        assert next(m for m in rpc(owner, "hq_snapshot", {"p_trip": trip})["members"] if m["user_id"] == users[1])["display_name"] == "Nombre por organizador"
+        print("PASS: self and organizer can rename; another traveler cannot rename others.")
         rpc(tokens[1], "save_personal_budget", {"p_trip": trip, "p_budget": 123456})
         assert rpc(tokens[1], "hq_snapshot", {"p_trip": trip})["personal_budget_minor"] == 123456
         assert rpc(owner, "hq_snapshot", {"p_trip": trip})["personal_budget_minor"] is None

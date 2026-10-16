@@ -1,6 +1,10 @@
 import Link from "next/link";
 const steps = [
   [
+    "Tu nombre en el equipo",
+    "En Equipo, cada integrante puede tocar Editar mi nombre y guardar cómo quiere aparecer. El organizador también puede editar los nombres de los demás. Cambiar un nombre no cambia la cuenta, el correo ni el historial de gastos.",
+  ],
+  [
     "1. Sumarse al mismo viaje",
     "El organizador va a Equipo, escribe el correo de cada amigo y pulsa Generar invitación. Comparte en privado el código y el enlace de la app. Cada amigo pulsa Crear cuenta, usa exactamente el correo invitado y elige su propia contraseña de al menos 12 caracteres. Después pega el código en Código de invitación y pulsa Unirme al viaje. No debe crear un viaje nuevo. No se envía un correo automático. Cada código vence en 7 días y sirve una sola vez. Hay cuatro lugares en total, incluyendo al organizador y las invitaciones pendientes.",
   ],

@@ -2585,3 +2585,21 @@ details[open] > summary svg {
   line-height: 1.7;
   margin-top: 12px;
 }
+
+.member-name-editor {
+  margin-top: 6px;
+  min-width: 0;
+}
+.member-name-editor form {
+  width: 100%;
+  max-width: 320px;
+  margin: 10px 0;
+}
+.team-list .member-info {
+  min-width: 0;
+  flex: 1;
+}
+.member-name-editor input {
+  width: 100%;
+  min-width: 0;
+}

@@ -548,3 +548,21 @@ export async function saveDisplayRate(f: FormData) {
     return "Cotización de consulta guardada. Los gastos originales no cambiaron.";
   });
 }
+
+export async function saveMemberName(f: FormData) {
+  return perform(async () => {
+    const { client } = await session();
+    const { data, error } = await client
+      .from("trip_members")
+      .update({ display_name: text(80).parse(get(f, "display_name")) })
+      .eq("trip_id", uuid.parse(get(f, "trip_id")))
+      .eq("user_id", uuid.parse(get(f, "member_id")))
+      .select("user_id");
+    if (error) throw dbError(error);
+    if (!data?.length)
+      throw new Error(
+        "Solo podés editar tu nombre, salvo que seas el organizador.",
+      );
+    return "Nombre actualizado.";
+  });
+}

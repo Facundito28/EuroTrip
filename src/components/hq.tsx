@@ -53,6 +53,7 @@ import {
 } from "./forms";
 import { ChangePasswordForm, JoinForm } from "./password-forms";
 import { TripCalendar } from "./calendar";
+import { MemberName } from "./member-name";
 import { TripMap } from "./trip-map";
 import { googleCalendarUrl } from "@/lib/agenda";
 import { PersonalBudget } from "./personal-budget";
@@ -1294,10 +1295,16 @@ export function HQ({ data }: { data: HQData }) {
                       <span className="avatar">
                         {m.display_name.slice(0, 1).toUpperCase()}
                       </span>
-                      <span>
+                      <div className="member-info">
                         <strong>{m.display_name}</strong>
                         <small>{m.email}</small>
-                      </span>
+                        {(owner || m.user_id === data.userId) && (
+                          <MemberName
+                            member={m}
+                            self={m.user_id === data.userId}
+                          />
+                        )}
+                      </div>
                       <span className="pill">
                         {m.user_id === data.trip.owner_id
                           ? "Organizador"

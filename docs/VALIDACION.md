@@ -73,3 +73,11 @@ Pruebas de calendario: fechas inclusivas/exclusivas, zona de verano e invierno, 
 51 pruebas unitarias/SQL aprobadas; lint y compilación con TypeScript aprobados. El verificador real confirmó direcciones y horarios compartidos entre miembros y aislamiento de no integrantes; eliminó las cinco cuentas y todos los datos temporales.
 
 Publicación confirmada: deployment `dpl_FPk6ngUdcWFb5irwL6PeGLjveYKS`, READY en el dominio estable. Verificación posterior: ingreso 200, guía 200 e itinerario ICS sin sesión 401.
+
+## Edición de nombres del equipo
+
+Migración 202610160005 aplicada. Cada miembro puede editar su nombre visible; el organizador puede editar los del grupo. Permiso UPDATE limitado a display_name, con RLS por identidad y pertenencia; correo, user_id y trip_id permanecen protegidos. No se cambiaron nombres de usuarios reales durante la implementación.
+
+52 pruebas unitarias/SQL aprobadas; seis pruebas de navegador escritorio/móvil aprobadas incluyendo edición propia por el amigo y posterior edición por el organizador. Se verificó que otro viajero no ve controles para editar a los demás, y que los selectores de gastos y transferencias usan el nombre actualizado. Lint y compilación de producción aprobados.
+
+Verificación en Supabase real aprobada: edición propia y por organizador, rechazo de edición ajena por otro viajero y limpieza completa de cinco cuentas temporales y sus datos.

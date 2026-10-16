@@ -56,6 +56,9 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync("supabase/migrations/202610160005_member_names.sql", "utf8"),
+  );
   await as(0);
   trip = (
     await db.query<{ id: string }>(
@@ -424,5 +427,53 @@ it("validates paired itinerary times and preserves destination details", async (
   await as(4);
   expect(
     (await db.query("select * from public.itinerary_events")).rows,
+  ).toHaveLength(0);
+});
+it("allows self and organizer name edits while protecting identities and other members", async () => {
+  await as(1);
+  expect(
+    (
+      await db.query(
+        "update public.trip_members set display_name='Joaquín' where trip_id=$1 and user_id=$2 returning display_name",
+        [trip, users[1]],
+      )
+    ).rows,
+  ).toHaveLength(1);
+  expect(
+    (
+      await db.query(
+        "update public.trip_members set display_name='Forbidden' where trip_id=$1 and user_id=$2 returning user_id",
+        [trip, users[2]],
+      )
+    ).rows,
+  ).toHaveLength(0);
+  await fails(
+    "update public.trip_members set email='changed@example.com' where user_id=$1",
+    [users[1]],
+  );
+  await fails("update public.trip_members set user_id=$1 where user_id=$2", [
+    users[4],
+    users[1],
+  ]);
+  await fails(
+    "update public.trip_members set display_name='' where user_id=$1",
+    [users[1]],
+  );
+  await as(0);
+  expect(
+    (
+      await db.query(
+        "update public.trip_members set display_name='Joaquín Gaffet' where trip_id=$1 and user_id=$2 returning display_name",
+        [trip, users[1]],
+      )
+    ).rows,
+  ).toHaveLength(1);
+  await as(4);
+  expect(
+    (
+      await db.query(
+        "update public.trip_members set display_name='Outsider' returning user_id",
+      )
+    ).rows,
   ).toHaveLength(0);
 });

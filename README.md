@@ -185,3 +185,7 @@ La migración `202610160004_event_places_times.sql` agrega lugar/dirección, hor
 Itinerario permite buscar lugares en un iframe de Google Maps que se carga solo al pulsar Buscar. No se configura ninguna API con facturación. No hay búsqueda offline ni garantías sobre la disponibilidad del proveedor externo. No se implementa geolocalización del usuario. Las pruebas de navegador sustituyen únicamente la respuesta del mapa; no demuestran el mapa real del proveedor.
 
 Agregar a Google Calendar abre la página de Google para revisar y guardar; no conecta cuentas ni envía el evento automáticamente. La exportación autenticada `/itinerary.ics` descarga un evento o toda la agenda para importar en calendarios compatibles. No hay sincronización bidireccional ni recordatorios automáticos dentro de Travel HQ. Reimportar puede duplicar entradas según el calendario; los cambios deben actualizarse también en la copia externa.
+
+## Nombres del equipo
+
+En Equipo cada integrante puede editar su propio nombre visible, y el organizador puede editar los nombres del grupo. Migración `202610160005_member_names.sql` aplicada: RLS y permiso de actualización limitado a `display_name`. No cambia correos, identidad ni saldos.

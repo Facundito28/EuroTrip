@@ -145,9 +145,40 @@ test("real SQL workflow: create trip, budget, expenses, transfers, itinerary, sc
   await expect(
     friendPage.getByRole("heading", { name: "Tu viaje, bajo control." }),
   ).toBeVisible();
+  await navigate(friendPage, "Equipo");
+  await friendPage
+    .getByRole("button", { name: "Editar mi nombre", exact: true })
+    .click();
+  await friendPage.getByLabel("Mi nombre", { exact: true }).fill("Joaquín");
+  await friendPage
+    .getByRole("button", { name: "Guardar nombre", exact: true })
+    .click();
+  await expect(
+    friendPage.locator(".team-list strong").filter({ hasText: "Joaquín" }),
+  ).toBeVisible();
+  await expect(
+    friendPage.getByRole("button", { name: "Editar nombre", exact: true }),
+  ).toHaveCount(0);
+  expect(
+    await friendPage.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
   await friend.close();
   await page.getByRole("button", { name: "Actualizar datos" }).click();
   await expect(page.getByText("2 de 4 lugares ocupados")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Editar nombre", exact: true })
+    .click();
+  await page
+    .getByLabel("Nombre del integrante", { exact: true })
+    .fill("Joaquín Gaffet");
+  await page
+    .getByRole("button", { name: "Guardar nombre", exact: true })
+    .click();
+  await expect(
+    page.locator(".team-list strong").filter({ hasText: "Joaquín Gaffet" }),
+  ).toBeVisible();
   await navigate(page, "Gastos");
   await page
     .getByRole("button", { name: "Cargar gasto", exact: true })
@@ -213,7 +244,7 @@ test("real SQL workflow: create trip, budget, expenses, transfers, itinerary, sc
   const transfer = page.getByRole("dialog");
   await transfer
     .getByLabel("Quién envió")
-    .selectOption({ label: `friend-${info.project.name}` });
+    .selectOption({ label: "Joaquín Gaffet" });
   await transfer
     .getByLabel("Quién recibió")
     .selectOption({ label: "Viajero de prueba" });

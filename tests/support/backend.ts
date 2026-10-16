@@ -29,6 +29,9 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  readFileSync("supabase/migrations/202610160005_member_names.sql", "utf8"),
+);
 const passwords = new Map<string, string>();
 const identities = new Map<string, { id: string; email: string }>();
 const tables = new Set([
