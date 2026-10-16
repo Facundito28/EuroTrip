@@ -73,6 +73,16 @@ def main():
         print("Custom SMTP configured:", bool(auth.get("smtp_host")))
         return 0
     except urllib.error.HTTPError as error:
+        if args.operation == "configure-otp" and error.code == 400:
+            # Interpret only a known non-secret service limitation, not the raw
+            # Auth configuration response, which could contain SMTP credentials.
+            try:
+                message = json.loads(error.read()).get("message", "")
+            except (ValueError, AttributeError):
+                message = ""
+            if "Email template modification is not available for free tier projects using the default email provider" in message:
+                print("La plantilla OTP está bloqueada por el plan gratuito con el correo predeterminado. Configurá SMTP propio o cambiá el plan; el token administrativo funciona.", file=sys.stderr)
+                return 5
         print(f"Supabase Management API HTTP {error.code}. Check token permissions and project access. No token or response containing secrets was printed.", file=sys.stderr)
         return 1
     except urllib.error.URLError as error:

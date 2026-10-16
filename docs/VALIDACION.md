@@ -17,7 +17,6 @@ Las 38 pruebas de dinero y PostgreSQL incluyen cuatro participantes, subconjunto
 
 ## Pendiente de validar en los proveedores reales
 
-- Migración aplicada en el proyecto Supabase del usuario.
 - Entrega de OTP mediante el SMTP configurado para las cuatro cuentas.
 - Sesiones reales, carga/descarga en Supabase Storage y RLS del proyecto remoto.
 - Deployment, HTTPS e instalación PWA en dispositivos físicos con el dominio Vercel final.
@@ -28,12 +27,21 @@ El adaptador de pruebas no implementa el servicio de correo ni la API de archivo
 
 - Checkout local y lectura del remoto Git disponibles. Rama de trabajo `work`.
 - Consulta de la API GitHub: `Forbidden`. Esto no invalida el acceso Git ni prueba permiso para publicar.
-- Supabase: bloqueo inicial del proxy (`Tunnel connection failed: 403 Forbidden`), resuelto en la comprobación posterior. `/auth/v1/settings` respondió **HTTP 200** con la clave publicable. El REST respondió **PGRST205 / HTTP 404** para `public.trips` y **PGRST202 / HTTP 404** para la función de invitaciones: el esquema todavía no está aplicado.
+- Supabase: bloqueo inicial del proxy (`Tunnel connection failed: 403 Forbidden`), resuelto en la comprobación posterior. `/auth/v1/settings` respondió **HTTP 200** con la clave publicable. El REST respondió **PGRST205 / HTTP 404** para `public.trips` y **PGRST202 / HTTP 404** para la función de invitaciones: esos errores iniciales se resolvieron al aplicar la migración con el acceso administrativo.
 - Servidor de producción local: login y manifiesto HTTP 200, exportación y descarga sin sesión HTTP 401, respuestas privadas sin caché y ausencia de datos de pruebas en la página real.
-- No se detectaron tokens administrativos de Supabase o Vercel en las variables disponibles. La clave publicable del proyecto está solo en configuración local ignorada por Git; no otorga privilegios para aplicar migraciones.
+- El token administrativo de Supabase quedó disponible mediante el secreto seguro `SUPABASE_ACCESS_TOKEN`. No se configuró acceso administrativo a Vercel. La clave publicable del proyecto está solo en configuración local ignorada por Git; no otorga privilegios para aplicar migraciones.
 
 No se hizo merge a `main`, no se subió la rama al remoto y no se publicó la aplicación. Un push podría activar deployments de Vercel si el usuario ya conectó el repositorio, por lo que requiere coordinar la publicación antes de realizarlo.
 
-Se declaró el requisito opcional de token administrativo personal `SUPABASE_ACCESS_TOKEN`, enviado solo a `api.supabase.com`, por preferencia expresa del usuario. Su declaración no proporciona un valor ni confirma acceso administrativo.
+## Configuración remota completada
 
-El helper administrativo `scripts/supabase_admin.py` está preparado. Su comprobación local informó que falta `SUPABASE_ACCESS_TOKEN` (salida 2); no se ejecutaron migraciones ni cambios de Auth en el proyecto remoto.
+- Acceso administrativo al proyecto `wehyamqphrvizksxhpzn` confirmado con el secreto seguro, sin exponer su valor.
+- Migración SQL aplicada satisfactoriamente: 10 tablas de Travel HQ, las 10 con RLS activado, 16 políticas públicas y bucket `receipts` privado.
+- El rol `anon` no tiene permiso SELECT sobre gastos. Las solicitudes reales sin sesión a tablas y RPC se rechazan.
+- Email está habilitado. No se crearon usuarios, gastos ni precios de prueba en el proyecto real.
+
+## Bloqueo del correo de acceso
+
+Supabase rechazó el cambio de plantilla OTP con HTTP 400 y el mensaje: “Email template modification is not available for free tier projects using the default email provider. Please upgrade your plan or configure a custom SMTP provider.”
+
+No hay SMTP personalizado configurado. Se necesita un proveedor de correo compatible antes de habilitar y comprobar el acceso por código para los cuatro viajeros. No se modificó el plan ni se contrataron servicios. La migración sí quedó aplicada; este bloqueo no invalida el acceso administrativo ni requiere recrear el token.
