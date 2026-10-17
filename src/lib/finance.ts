@@ -5,6 +5,7 @@ import type {
   Settlement,
   Share,
   ExpensePayment,
+  PersonalExpense,
 } from "./types";
 
 export function totals(expenses: Expense[], budget: number) {
@@ -82,6 +83,7 @@ export function personalTotals(
   expenses: Expense[],
   shares: Share[],
   budget: number,
+  privateExpenses: PersonalExpense[] = [],
 ) {
   let paid = 0,
     reserved = 0,
@@ -107,6 +109,17 @@ export function personalTotals(
           splitWeighted(remainingAmount(expense), weights)[userId] ?? 0;
     }
   }
+  const own = totals(
+    privateExpenses.map((e) => ({
+      ...e,
+      payer_id: userId,
+      created_by: userId,
+    })),
+    0,
+  );
+  paid += own.paid;
+  reserved += own.reserved;
+  estimated += own.estimated;
   return {
     paid,
     reserved,

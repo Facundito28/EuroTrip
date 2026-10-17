@@ -75,14 +75,17 @@ test("real SQL workflow: create trip, budget, expenses, transfers, itinerary, sc
   ).toBeVisible();
   const budgetPanel = page.locator(".personal-budget");
   await budgetPanel
-    .getByText("Editar mi límite personal", { exact: true })
+    .getByRole("button", { name: "Definir mi presupuesto", exact: true })
     .click();
   await page.getByLabel("Mi presupuesto personal · EUR").fill("1000");
   await page
     .getByRole("button", { name: "Guardar mi presupuesto", exact: true })
     .click();
   await expect(
-    page.getByText("Tu presupuesto personal quedó guardado."),
+    budgetPanel.getByRole("button", {
+      name: "Editar mi presupuesto",
+      exact: true,
+    }),
   ).toBeVisible();
   await budgetPanel
     .getByText("Configurar cotización USD/EUR", { exact: true })
@@ -533,4 +536,156 @@ test("advanced expenses: quick entry, unequal shares, installments, repeat and a
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+test("private spending, visible budget editing and mobile form containment", async ({
+  page,
+  browser,
+}, info) => {
+  await signIn(page, `privacy-owner-${info.project.name}@example.test`);
+  await page
+    .getByText("Soy el organizador: crear un viaje", { exact: true })
+    .click();
+  await page
+    .getByLabel("Tu nombre", { exact: true })
+    .fill("Organizador privado");
+  await page.getByRole("button", { name: "Crear mi viaje" }).click();
+  const panel = page.locator(".personal-budget");
+  await panel
+    .getByRole("button", { name: "Definir mi presupuesto", exact: true })
+    .click();
+  await page.getByLabel("Mi presupuesto personal · EUR").fill("500");
+  await page
+    .getByRole("button", { name: "Guardar mi presupuesto", exact: true })
+    .click();
+  await expect(
+    panel.getByRole("button", { name: "Editar mi presupuesto", exact: true }),
+  ).toBeVisible();
+  await panel
+    .getByRole("button", { name: "Agregar gasto personal", exact: true })
+    .click();
+  let dialog = page.getByRole("dialog");
+  await dialog
+    .getByLabel("Descripción", { exact: true })
+    .fill("Hamburguesa privada");
+  await dialog.getByLabel("Importe original", { exact: true }).fill("12.50");
+  const contained = await dialog.evaluate((el) => {
+    const bounds = el.getBoundingClientRect();
+    return Array.from(
+      el.querySelectorAll("input:not([type=hidden]),select,textarea"),
+    ).every((input) => {
+      const r = input.getBoundingClientRect();
+      return r.left >= bounds.left && r.right <= bounds.right;
+    });
+  });
+  expect(contained).toBe(true);
+  await page.screenshot({
+    path: `test-results/private-form-${info.project.name}.png`,
+  });
+  await dialog
+    .getByRole("button", { name: "Guardar solo para mí", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  await expect(panel.locator(".personal-totals").first()).toContainText(
+    "12,50",
+  );
+  await panel
+    .getByRole("button", { name: "Ver mis gastos privados", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Hamburguesa privada", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Editar gasto personal", exact: true })
+    .click();
+  dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Importe original").fill("15");
+  await dialog
+    .getByRole("button", { name: "Guardar gasto personal", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  await navigate(page, "Gastos");
+  await expect(
+    page.getByRole("heading", { name: "Hamburguesa privada", exact: true }),
+  ).toHaveCount(0);
+  await navigate(page, "Actividad");
+  await expect(
+    page.getByRole("heading", { name: "Actividad reciente", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("main")).not.toContainText("Hamburguesa privada");
+  await navigate(page, "Equipo");
+  await page
+    .getByLabel("Correo del integrante")
+    .fill(`privacy-friend-${info.project.name}@example.test`);
+  await page
+    .getByRole("button", { name: "Generar invitación", exact: true })
+    .click();
+  const code = await page
+    .getByLabel("Código privado de invitación")
+    .inputValue();
+  const friend = await browser.newContext();
+  const fp = await friend.newPage();
+  await signIn(fp, `privacy-friend-${info.project.name}@example.test`);
+  await fp.getByLabel("Código de invitación", { exact: true }).fill(code);
+  await fp
+    .getByRole("button", { name: "Unirme al viaje", exact: true })
+    .click();
+  await expect(
+    fp.getByRole("heading", { name: "Tu viaje, bajo control." }),
+  ).toBeVisible();
+  await navigate(fp, "Mis gastos");
+  await expect(
+    fp.getByRole("heading", { name: "Hamburguesa privada", exact: true }),
+  ).toHaveCount(0);
+  await friend.close();
+  await navigate(page, "Resumen");
+  await panel
+    .getByRole("button", { name: "Editar mi presupuesto", exact: true })
+    .click();
+  await page.getByLabel("Mi presupuesto personal · EUR").fill("600");
+  await page
+    .getByRole("button", { name: "Guardar mi presupuesto", exact: true })
+    .click();
+  await expect(panel.locator(".personal-totals").first()).toContainText(
+    "585,00",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/private-dashboard-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Cargar gasto", exact: true }).click();
+  dialog = page.getByRole("dialog");
+  expect(
+    await dialog.evaluate((el) => {
+      const b = el.getBoundingClientRect();
+      return [
+        ...el.querySelectorAll("input:not([type=hidden]),select,textarea"),
+      ].every((i) => {
+        const r = i.getBoundingClientRect();
+        return r.left >= b.left && r.right <= b.right;
+      });
+    }),
+  ).toBe(true);
+  await dialog
+    .getByRole("combobox", { name: "Moneda", exact: true })
+    .selectOption("USD");
+  await dialog
+    .getByLabel("Fecha de la cotización", { exact: true })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: `test-results/shared-form-${info.project.name}.png`,
+  });
+  await dialog
+    .getByLabel("¿Para quién es este gasto?")
+    .selectOption("personal");
+  await expect(
+    dialog.getByRole("button", { name: "Guardar solo para mí", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Cerrar ventana", exact: true })
+    .click();
 });

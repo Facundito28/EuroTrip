@@ -195,3 +195,27 @@ it("partial payments consume actual EUR, reserve only the remainder and credit e
     projected: 39000,
   });
 });
+it("personal budget includes private purchases without changing shared balances or totals", () => {
+  const shared = expense("shared", "paid", 10000);
+  const privateItem = {
+    ...expense("private", "paid", 1250),
+    user_id: "a",
+  } as import("../src/lib/types").PersonalExpense;
+  const shares = [
+    { expense_id: "shared", member_id: "a", amount_minor: 5000 },
+    { expense_id: "shared", member_id: "b", amount_minor: 5000 },
+  ];
+  expect(personalTotals("a", [shared], shares, 10000, [privateItem]).paid).toBe(
+    6250,
+  );
+  expect(
+    personalTotals("a", [shared], shares, 10000, [privateItem]).available,
+  ).toBe(3750);
+  expect(totals([shared], 20000).paid).toBe(10000);
+  expect(balances(members, [shared], shares, [])).toEqual({
+    a: 5000,
+    b: -5000,
+    c: 0,
+    d: 0,
+  });
+});

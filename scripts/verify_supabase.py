@@ -102,6 +102,21 @@ def main():
         request(BASE + "/rest/v1/trips?id=eq." + trip, "PATCH", {"usd_per_eur": "1.10", "display_rate_date": "2026-10-16"}, owner)
         assert rpc(owner, "hq_snapshot", {"p_trip": trip})["trip"]["usd_per_eur"] == "1.10000000"
         print("PASS: private personal limits and exact manual display FX on real Supabase.")
+        private = request(BASE+"/rest/v1/personal_expenses", "POST", {"trip_id":trip,"description":"Compra privada temporal","category":"Comida","amount_minor":1250,"currency":"EUR","rate_to_eur":"1","rate_date":"2027-04-22","occurred_on":"2027-04-22","status":"paid","request_id":str(uuid.uuid4())}, tokens[1])[0]
+        private_id=private["id"]
+        own_snapshot=rpc(tokens[1],"hq_snapshot",{"p_trip":trip})
+        assert len(own_snapshot["personal_expenses"])==1
+        assert rpc(owner,"hq_snapshot",{"p_trip":trip})["personal_expenses"]==[]
+        assert request(BASE+"/rest/v1/personal_expenses?select=id",bearer=owner)==[]
+        assert request(BASE+"/rest/v1/personal_expenses?select=id",bearer=tokens[2])==[]
+        assert request(BASE+"/rest/v1/personal_expenses?id=eq."+private_id,"PATCH",{"description":"No permitido"},owner)==[]
+        assert request(BASE+"/rest/v1/personal_expenses?id=eq."+private_id,"DELETE",bearer=owner)==[]
+        assert all(a["label"]!="Compra privada temporal" for a in own_snapshot["activity"])
+        assert all(e["description"]!="Compra privada temporal" for e in own_snapshot["expenses"])
+        request(BASE+"/rest/v1/personal_expenses?id=eq."+private_id,"PATCH",{"amount_minor":1500},tokens[1])
+        assert rpc(tokens[1],"hq_snapshot",{"p_trip":trip})["personal_expenses"][0]["eur_minor"]==1500
+        print("PASS: private purchases editable only by owner; hidden from organizer, other members, shared ledger and activity.")
+
         request(BASE + "/rest/v1/itinerary_events", "POST", {"trip_id": trip, "title": "Visita temporal", "city": "Madrid", "location": "Museo temporal", "starts_on": "2027-04-22", "ends_on": "2027-04-22", "kind": "activity", "start_time": "10:00", "end_time": "12:00", "time_zone": "Europe/Madrid"}, owner)
         event = rpc(tokens[1], "hq_snapshot", {"p_trip": trip})["events"][0]
         assert event["start_time"] == "10:00:00" and event["location"] == "Museo temporal"

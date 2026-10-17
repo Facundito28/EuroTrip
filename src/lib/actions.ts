@@ -603,3 +603,57 @@ export async function deleteExpensePayment(f: FormData) {
     return "Pago anulado; el saldo pendiente se actualizó.";
   });
 }
+
+export async function savePersonalExpense(f: FormData) {
+  return perform(async () => {
+    const { client, user } = await session();
+    const record = {
+      description: text(160).parse(get(f, "description")),
+      category: z.enum(categories).parse(get(f, "category")),
+      ...monetary(f),
+      occurred_on: date.parse(get(f, "occurred_on")),
+      status: z.enum(["paid", "reserved", "estimated"]).parse(get(f, "status")),
+      notes: z.string().max(2000).parse(get(f, "notes")),
+    };
+    const trip = uuid.parse(get(f, "trip_id")),
+      id = get(f, "id");
+    if (id) {
+      const { data, error } = await client
+        .from("personal_expenses")
+        .update(record)
+        .eq("id", uuid.parse(id))
+        .eq("trip_id", trip)
+        .eq("user_id", user.id)
+        .select("id");
+      if (error) throw dbError(error);
+      if (!data?.length) throw new Error("No se encontró tu gasto personal.");
+    } else {
+      const request = uuid.parse(get(f, "request_id"));
+      const { error } = await client
+        .from("personal_expenses")
+        .insert({
+          ...record,
+          trip_id: trip,
+          user_id: user.id,
+          request_id: request,
+        });
+      if (error && error.code !== "23505") throw dbError(error);
+    }
+    return "Gasto personal guardado. Solo vos podés verlo.";
+  });
+}
+export async function deletePersonalExpense(f: FormData) {
+  return perform(async () => {
+    const { client, user } = await session();
+    const { data, error } = await client
+      .from("personal_expenses")
+      .delete()
+      .eq("id", uuid.parse(get(f, "id")))
+      .eq("trip_id", uuid.parse(get(f, "trip_id")))
+      .eq("user_id", user.id)
+      .select("id");
+    if (error) throw dbError(error);
+    if (!data?.length) throw new Error("No se encontró tu gasto personal.");
+    return "Gasto personal eliminado.";
+  });
+}

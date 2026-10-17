@@ -6,7 +6,16 @@ import { savePersonalBudget, saveDisplayRate } from "@/lib/actions";
 import type { HQData } from "@/lib/types";
 import { ActionForm, HiddenTrip } from "./action-form";
 
-export function PersonalBudget({ data }: { data: HQData }) {
+export function PersonalBudget({
+  data,
+  onAddPersonal,
+  onViewPersonal,
+}: {
+  data: HQData;
+  onAddPersonal?: () => void;
+  onViewPersonal?: () => void;
+}) {
+  const [editingBudget, setEditingBudget] = useState(false);
   const [currency, setCurrency] = useState<"EUR" | "USD">("EUR");
   const rate = data.trip.usd_per_eur;
   const personal = data.personal_budget_minor;
@@ -15,6 +24,7 @@ export function PersonalBudget({ data }: { data: HQData }) {
     data.expenses,
     data.shares,
     personal ?? 0,
+    data.personal_expenses ?? [],
   );
   const group = totals(data.expenses, data.trip.budget_minor);
   function money(amount: number) {
@@ -32,7 +42,7 @@ export function PersonalBudget({ data }: { data: HQData }) {
       <div className="panel-heading">
         <div>
           <h2>Mi presupuesto</h2>
-          <p>Tu parte del viaje, independientemente de quién pagó.</p>
+          <p>Tu parte de los gastos compartidos más tus compras privadas.</p>
         </div>
         <label>
           Ver totales en
@@ -46,6 +56,60 @@ export function PersonalBudget({ data }: { data: HQData }) {
           </select>
         </label>
       </div>
+      <div className="personal-budget-actions">
+        <button
+          type="button"
+          className="button secondary"
+          aria-expanded={editingBudget}
+          onClick={() => setEditingBudget(!editingBudget)}
+        >
+          {editingBudget
+            ? "Cerrar edición"
+            : personal == null
+              ? "Definir mi presupuesto"
+              : "Editar mi presupuesto"}
+        </button>
+        {onAddPersonal && (
+          <button
+            type="button"
+            className="button primary"
+            onClick={onAddPersonal}
+          >
+            Agregar gasto personal
+          </button>
+        )}
+        {onViewPersonal && (
+          <button
+            type="button"
+            className="text-button"
+            onClick={onViewPersonal}
+          >
+            Ver mis gastos privados
+          </button>
+        )}
+      </div>
+      {editingBudget && (
+        <div className="budget-editor">
+          <ActionForm
+            action={savePersonalBudget}
+            label="Guardar mi presupuesto"
+            onSuccess={() => setEditingBudget(false)}
+          >
+            <HiddenTrip id={data.trip.id} />
+            <label>
+              Mi presupuesto personal · EUR
+              <input
+                name="personal_budget"
+                inputMode="decimal"
+                required
+                defaultValue={personal == null ? "" : decimalAmount(personal)}
+                placeholder="Tu límite para todo el viaje"
+                autoFocus
+              />
+            </label>
+          </ActionForm>
+        </div>
+      )}
       <div className="personal-totals">
         {[
           ["Mi límite", personal == null ? null : personal],
@@ -90,22 +154,6 @@ export function PersonalBudget({ data }: { data: HQData }) {
         registrados. Cada gasto conserva su importe original y su propia
         cotización histórica.
       </p>
-      <details>
-        <summary>Editar mi límite personal</summary>
-        <ActionForm action={savePersonalBudget} label="Guardar mi presupuesto">
-          <HiddenTrip id={data.trip.id} />
-          <label>
-            Mi presupuesto personal · EUR
-            <input
-              name="personal_budget"
-              inputMode="decimal"
-              required
-              defaultValue={personal == null ? "" : decimalAmount(personal)}
-              placeholder="Tu límite para todo el viaje"
-            />
-          </label>
-        </ActionForm>
-      </details>
       {data.trip.owner_id === data.userId && (
         <details>
           <summary>Configurar cotización USD/EUR</summary>

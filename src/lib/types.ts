@@ -124,6 +124,7 @@ export type HQData = {
   receipts: Receipt[];
   userId: string;
   personal_budget_minor?: number | null;
+  personal_expenses?: PersonalExpense[];
   payments?: ExpensePayment[];
   activity?: Activity[];
 };
@@ -151,3 +152,20 @@ export type Activity = {
   before_data: Record<string, unknown> | null;
   after_data: Record<string, unknown> | null;
 };
+
+export type PersonalExpense = Pick<
+  Expense,
+  | "id"
+  | "trip_id"
+  | "description"
+  | "category"
+  | "amount_minor"
+  | "currency"
+  | "rate_to_eur"
+  | "eur_minor"
+  | "rate_date"
+  | "occurred_on"
+  | "status"
+  | "notes"
+  | "created_at"
+> & { user_id: string };

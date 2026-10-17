@@ -65,6 +65,12 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/202610160007_private_expenses.sql",
+      "utf8",
+    ),
+  );
   await as(0);
   trip = (
     await db.query<{ id: string }>(
@@ -626,4 +632,59 @@ it("rejects unequal shares that do not conserve total and records share edits", 
       )
     ).rows.length,
   ).toBeGreaterThan(0);
+});
+it("private purchases remain invisible to fellow travelers and the organizer", async () => {
+  await as(1);
+  const inserted = await db.query<{ id: string }>(
+    "insert into public.personal_expenses(trip_id,description,category,amount_minor,currency,rate_to_eur,rate_date,occurred_on,status) values($1,'Mi hamburguesa','Comida',1250,'EUR',1,'2027-04-22','2027-04-22','paid') returning id",
+    [trip],
+  );
+  const id = inserted.rows[0].id;
+  const own = await db.query<{ v: import("../src/lib/types").HQData }>(
+    "select public.hq_snapshot($1) v",
+    [trip],
+  );
+  expect(own.rows[0].v.personal_expenses?.some((e) => e.id === id)).toBe(true);
+  expect(own.rows[0].v.expenses.some((e) => e.id === id)).toBe(false);
+  expect(
+    own.rows[0].v.activity?.some((a) => a.label === "Mi hamburguesa"),
+  ).toBe(false);
+  await as(0);
+  expect(
+    (await db.query("select * from public.personal_expenses")).rows,
+  ).toHaveLength(0);
+  expect(
+    (
+      await db.query<{ v: import("../src/lib/types").HQData }>(
+        "select public.hq_snapshot($1) v",
+        [trip],
+      )
+    ).rows[0].v.personal_expenses,
+  ).toEqual([]);
+  expect(
+    (
+      await db.query(
+        "update public.personal_expenses set description='Espiar' where id=$1 returning id",
+        [id],
+      )
+    ).rows,
+  ).toHaveLength(0);
+  expect(
+    (
+      await db.query(
+        "delete from public.personal_expenses where id=$1 returning id",
+        [id],
+      )
+    ).rows,
+  ).toHaveLength(0);
+  await fails(
+    "insert into public.personal_expenses(trip_id,user_id,description,category,amount_minor,currency,rate_to_eur,rate_date,occurred_on,status) values($1,$2,'Fake','Comida',1,'EUR',1,'2027-04-22','2027-04-22','paid')",
+    [trip, users[1]],
+  );
+  await as(1);
+  await fails("update public.personal_expenses set user_id=$1 where id=$2", [
+    users[0],
+    id,
+  ]);
+  await db.query("delete from public.personal_expenses where id=$1", [id]);
 });

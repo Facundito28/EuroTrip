@@ -93,3 +93,13 @@ Migración 202610160006 aplicada al proyecto real. Conservación de gastos, repa
 Verificador Supabase real aprobado: mismas validaciones de cuotas, reparto, idempotencia, anulación y auditoría privada; limpieza completa de cinco cuentas temporales y sus datos. El CSV incluye consumos efectivos y pendiente. Cuotas futuras sin pagar permanecen en el saldo reservado: no hay cronograma de vencimientos ni débitos automáticos.
 
 La nueva prueba completa pasó en escritorio y móvil (dos ejecuciones dirigidas), además de las seis previas aprobadas con el nuevo libro. La navegación ahora tiene nombres accesibles estables para que el contador de gastos no cambie su identificación. Publicación inicial READY `dpl_GqNGwkHuDamD8D1xDfGeHy9NcyL9`; HTTP de producción 200, guía 200 y CSV anónimo 401.
+
+## Gastos personales privados, edición del presupuesto y diseño móvil
+
+Migración 202610160007 aplicada al proyecto real, sin modificar el libro compartido. Compras personales en tabla separada con RLS por autor, incluso frente al organizador. Snapshot devuelve únicamente las propias; no se registran en actividad, balances, totales ni CSV compartidos. El presupuesto personal suma compras privadas y participación propia en compartidos. Los compartidos anteriores conservan su visibilidad.
+
+Definir/Editar mi presupuesto son botones visibles; Agregar gasto personal y Mis gastos permiten crear, editar y borrar compras propias. Una carga nueva ofrece Compartido o Solo para mí. Formularios móviles de una columna, columnas desktop minmax(0,1fr), límites de ancho para fechas nativas y tarjetas separadas. El botón flotante se limita a Gastos y desaparece al abrir un modal para no tapar el presupuesto. Campos de cotización se omiten al cargar EUR. Navegación desplazable en pantallas bajas.
+
+58 pruebas unitarias/SQL aprobadas; permisos privados comprobados en la base, incluidos rechazo de lectura/escritura del organizador y ausencia en snapshot compartido e historial. Verificador real pasó con edición propia, intento de modificación y eliminación ajenas rechazado, y limpieza de cinco cuentas y todos los datos temporales. Pruebas de navegador cubren presupuesto editable, creación/edición privada, otro amigo sin acceso y controles dentro del modal. Se inspeccionaron capturas de formulario y dashboard móvil; sin desbordamiento de fechas ni botón sobre el presupuesto. Navegador de prueba Chromium con tamaño iPhone; no se presenta como prueba física de Safari iOS.
+
+Las ocho pruebas existentes pasaron con la nueva separación privada. Las dos nuevas de privacidad y diseño pasaron en ejecución dirigida en escritorio y móvil, incluyendo capturas revisadas. Lint y primera compilación aprobaron; Vercel recompila la versión final con simplificación de campos EUR.

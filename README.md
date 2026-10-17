@@ -199,3 +199,9 @@ Una reserva guarda el total original y su TC base. Cada cuota registra el import
 Una vez registrados pagos, moneda, TC base, fecha de TC y pagador previsto quedan protegidos; se puede editar descripción, reparto y total si no queda debajo de lo ya pagado. Para corregir un pago, se anula desde detalles (creador u organizador) y se registra de nuevo. El historial inmutable conserva la operación. Actividad muestra los últimos 100 registros; no hay historial inventado previo a la migración.
 
 Carga rápida en Resumen y Repetir gasto en detalles preparan un formulario que requiere confirmación. La repetición no copia cuotas ni archivos y exige revisar una nueva cotización en monedas distintas de EUR. CSV incluye importe total, TC base, pagos efectivos EUR y pendiente.
+
+## Compras privadas y móvil
+
+Migración `202610160007_private_expenses.sql` aplicada al proyecto real, después de las otras seis. Tabla separada con RLS por autor: ni organizador ni compañeros pueden leer, modificar o eliminar una compra privada. El snapshot devuelve solo las del usuario autenticado; no se incorporan al libro compartido, su CSV, balances ni auditoría grupal. Mi presupuesto suma la parte propia de los gastos compartidos y las compras privadas. No hay conversión automática de registros compartidos existentes.
+
+Resumen tiene botones visibles Definir/Editar mi presupuesto y Agregar gasto personal. Mis gastos permite editar o eliminar compras propias. Al cargar un gasto nuevo se elige Compartido o Solo para mí. Los privados admiten pagado, reservado o estimado; no usan cuotas o deudas entre amigos. Formularios móviles usan una sola columna, controles nativos de fecha acotados y espacio inferior para el botón flotante.

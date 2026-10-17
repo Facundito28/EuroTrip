@@ -38,6 +38,9 @@ await db.exec(
     "utf8",
   ),
 );
+await db.exec(
+  readFileSync("supabase/migrations/202610160007_private_expenses.sql", "utf8"),
+);
 const passwords = new Map<string, string>();
 const identities = new Map<string, { id: string; email: string }>();
 const tables = new Set([
@@ -51,6 +54,7 @@ const tables = new Set([
   "scenarios",
   "scenario_items",
   "receipts",
+  "personal_expenses",
 ]);
 const functions = new Set([
   "create_trip",

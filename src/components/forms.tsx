@@ -58,39 +58,52 @@ export function MoneyFields({
           </select>
         </label>
       </div>
-      <div className="form-grid">
-        <label>
-          EUR por 1 {currency}
+      {currency === "EUR" ? (
+        <>
+          <input type="hidden" name="rate" value="1" />
           <input
-            key={currency}
-            name="rate"
-            inputMode="decimal"
-            required
-            readOnly={currency === "EUR"}
-            defaultValue={
-              currency === "EUR"
-                ? "1"
-                : !reviewRate && expense?.currency === currency
-                  ? String(expense.rate_to_eur)
-                  : ""
-            }
-            placeholder="Ingresá la cotización"
-          />
-        </label>
-        <label>
-          Fecha de la cotización
-          <input
-            type="date"
+            type="hidden"
             name="rate_date"
-            required
-            defaultValue={expense?.rate_date ?? today()}
+            value={expense?.rate_date ?? today()}
           />
-        </label>
-      </div>
-      <p className="field-help">
-        Cotización manual: por ejemplo, indicá cuántos EUR equivale una unidad
-        de la moneda elegida. Se conserva con esta operación.
-      </p>
+        </>
+      ) : (
+        <>
+          <div className="form-grid">
+            <label>
+              EUR por 1 {currency}
+              <input
+                key={currency}
+                name="rate"
+                inputMode="decimal"
+                required
+                readOnly={currency === "EUR"}
+                defaultValue={
+                  currency === "EUR"
+                    ? "1"
+                    : !reviewRate && expense?.currency === currency
+                      ? String(expense.rate_to_eur)
+                      : ""
+                }
+                placeholder="Ingresá la cotización"
+              />
+            </label>
+            <label>
+              Fecha de la cotización
+              <input
+                type="date"
+                name="rate_date"
+                required
+                defaultValue={expense?.rate_date ?? today()}
+              />
+            </label>
+          </div>
+          <p className="field-help">
+            Cotización manual: por ejemplo, indicá cuántos EUR equivale una
+            unidad de la moneda elegida. Se conserva con esta operación.
+          </p>
+        </>
+      )}
     </>
   );
 }

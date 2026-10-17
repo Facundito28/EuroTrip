@@ -1,6 +1,10 @@
 import Link from "next/link";
 const steps = [
   [
+    "Mi presupuesto y mis compras privadas",
+    "En Resumen tocá Definir mi presupuesto o Editar mi presupuesto, ingresá tu límite en EUR y guardá. Agregar gasto personal permite registrar una hamburguesa, ropa o cualquier compra solo tuya. También podés elegir Solo para mí · privado al cargar un gasto nuevo. Esas compras aparecen únicamente en Mis gastos y se suman a tu consumo personal junto con tu parte de los compartidos. No generan deudas ni cambian el presupuesto grupal y no las ve el organizador. Un gasto compartido con un solo participante sigue siendo visible para el grupo; la opción privada es distinta. Los registros compartidos anteriores conservan su visibilidad y no se convierten automáticamente.",
+  ],
+  [
     "Carga rápida y repetir",
     "En Resumen, Comida, Transporte, Alojamiento y Actividades abren una carga con categoría y descripción preparadas. Completá el importe y revisá quién paga y quiénes participan. En Gastos, Repetir gasto prepara una compra nueva con los datos y el reparto de otra: revisá la fecha, el importe y la cotización. No copia comprobantes ni cuotas; solo se guarda cuando confirmás.",
   ],

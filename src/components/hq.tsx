@@ -46,11 +46,11 @@ import {
   type Expense,
   type Event,
   type Scenario,
+  type PersonalExpense,
 } from "@/lib/types";
 import { deleteExpense, deleteRecord, logout, markPaid } from "@/lib/actions";
 import { ActionForm, HiddenTrip } from "./action-form";
 import {
-  ExpenseForm,
   SettlementForm,
   EventForm,
   ScenarioForm,
@@ -61,6 +61,11 @@ import {
 } from "./forms";
 import { ChangePasswordForm, JoinForm } from "./password-forms";
 import { TripCalendar } from "./calendar";
+import {
+  ExpenseEntry,
+  PersonalExpenseForm,
+  PrivateExpenses,
+} from "./private-expenses";
 import { ExpensePayments } from "./expense-payments";
 import { ActivityFeed } from "./activity";
 import { MemberName } from "./member-name";
@@ -71,6 +76,7 @@ import { InstallButton } from "./pwa";
 const tabs = [
   ["dashboard", "Vue d’ensemble", LayoutDashboard],
   ["expenses", "Gastos", Wallet],
+  ["personal", "Mis gastos", Wallet],
   ["balances", "Saldos", ArrowLeftRight],
   ["itinerary", "Itinerario", CalendarDays],
   ["scenarios", "Escenarios", GitCompareArrows],
@@ -80,6 +86,7 @@ const tabs = [
 ] as const;
 type Tab = (typeof tabs)[number][0];
 type Modal =
+  | { kind: "personal"; expense?: PersonalExpense }
   | { kind: "expense"; expense?: Expense; repeat?: boolean; preset?: string }
   | { kind: "event"; event?: Event }
   | { kind: "settlement" }
@@ -270,6 +277,7 @@ export function HQ({ data }: { data: HQData }) {
           modal.kind === "expense" && modal.expense && !modal.repeat
             ? "Editar gasto"
             : "Nuevo gasto",
+        personal: "Mi gasto privado",
         settlement: "Registrar transferencia",
         event:
           modal.kind === "event" && modal.event
@@ -412,6 +420,7 @@ export function HQ({ data }: { data: HQData }) {
                   {
                     dashboard: "Tu viaje, bajo control.",
                     expenses: "Cada gasto, en su lugar.",
+                    personal: "Tus compras, solo para vos.",
                     balances: "Cuentas claras. Siempre.",
                     itinerary: "El plan es Europa.",
                     scenarios: "Elegir también es planear.",
@@ -426,8 +435,9 @@ export function HQ({ data }: { data: HQData }) {
                   {
                     dashboard:
                       "Menos cuentas pendientes. Más momentos por vivir.",
-                    expenses:
-                      "Importes originales, cotizaciones guardadas y cero gastos duplicados.",
+                    expenses: "Gastos visibles para el grupo y sus repartos.",
+                    personal:
+                      "Gastos privados, sin deudas ni cambios en el presupuesto grupal.",
                     balances:
                       "Quién puso cuánto, quién debe y cómo ponerse al día.",
                     itinerary:
@@ -558,7 +568,11 @@ export function HQ({ data }: { data: HQData }) {
                   )}
                 </div>
               </section>
-              <PersonalBudget data={data} />
+              <PersonalBudget
+                data={data}
+                onAddPersonal={() => setModal({ kind: "personal" })}
+                onViewPersonal={() => navigate("personal")}
+              />
               <div className="dashboard-columns">
                 <section className="panel">
                   <div className="panel-heading">
@@ -1356,6 +1370,13 @@ export function HQ({ data }: { data: HQData }) {
               )}
             </>
           )}
+          {tab === "personal" && (
+            <PrivateExpenses
+              data={data}
+              onAdd={() => setModal({ kind: "personal" })}
+              onEdit={(expense) => setModal({ kind: "personal", expense })}
+            />
+          )}
           {tab === "activity" && <ActivityFeed data={data} />}
           {tab === "team" && (
             <div className="dashboard-columns">
@@ -1519,22 +1540,31 @@ export function HQ({ data }: { data: HQData }) {
           </footer>
         </main>
       </div>
-      <button
-        className="mobile-add"
-        aria-label="Cargar gasto rápido"
-        onClick={() => setModal({ kind: "expense" })}
-      >
-        <Plus size={26} />
-      </button>
+      {tab === "expenses" && !modal && (
+        <button
+          className="mobile-add"
+          aria-label="Cargar gasto rápido"
+          onClick={() => setModal({ kind: "expense" })}
+        >
+          <Plus size={26} />
+        </button>
+      )}
       {modal && (
         <ModalWindow title={modalTitle} close={close}>
           {modal.kind === "expense" ? (
-            <ExpenseForm
+            <ExpenseEntry
               key={modal.expense?.id ?? "new"}
               data={data}
               expense={modal.expense}
               repeat={modal.repeat}
               preset={modal.preset}
+              done={close}
+            />
+          ) : modal.kind === "personal" ? (
+            <PersonalExpenseForm
+              key={modal.expense?.id ?? "private-new"}
+              data={data}
+              expense={modal.expense}
               done={close}
             />
           ) : modal.kind === "settlement" ? (
