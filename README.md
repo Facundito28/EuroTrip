@@ -34,7 +34,7 @@ Sin configuración, la página muestra instrucciones; no simula una aplicación 
 
 La aplicación funciona con **correo y contraseña, sin SMTP ni envío de correos**. Para entrar a un viaje existente también se exige una invitación privada de un solo uso. No es necesario cambiar de plan por la limitación de plantillas del proveedor gratuito.
 
-1. Ejecutar en orden todas las migraciones de `supabase/migrations`. Si la primera ya está aplicada, ejecutar solamente `202610160002_password_invitations.sql`. No volver a ejecutar migraciones instaladas.
+1. Ejecutar en orden todas las migraciones de `supabase/migrations`. Si hay migraciones aplicadas, ejecutar únicamente las posteriores que falten, en orden. No volver a ejecutar migraciones instaladas.
 2. En Authentication → Providers → Email: habilitar Email y desactivar **Confirm email**. Habilitar nuevos registros y establecer una contraseña mínima de 12 caracteres. **Primero aplicar la segunda migración:** desactiva expresamente el antiguo ingreso al grupo basado únicamente en el correo.
 3. El organizador crea su cuenta desde la app con correo y contraseña; luego abre “Soy el organizador: crear un viaje”. No se manda ningún correo.
 4. En Equipo, el organizador genera una invitación para el correo de cada amigo y comparte el código en privado. El amigo crea su cuenta con ese mismo correo y pega el código en “Unirme al viaje”.
@@ -42,7 +42,7 @@ La aplicación funciona con **correo y contraseña, sin SMTP ni envío de correo
 
 El correo identifica la cuenta, pero **no se verifica su propiedad**. Por eso coincidir con el correo de una invitación nunca otorga acceso: siempre se exige poseer el código privado. Alguien que se registre sin invitación solo puede crear su propio grupo independiente; no puede ver el viaje de los cuatro amigos.
 
-Guardá la contraseña en un gestor. Se puede cambiar desde Configuración, confirmando la actual. **La recuperación de contraseña por correo no está disponible sin SMTP.** Ante pérdida de acceso se requiere una recuperación administrativa con comprobación de identidad; la app no permite saltarse la contraseña ni recuperar cuentas por conocer un correo. No se permite editar el correo de la cuenta desde la interfaz.
+Guardá la contraseña en un gestor. Se puede cambiar desde Configuración, confirmando la actual. **La recuperación de contraseña por correo no está disponible sin SMTP.** La recuperación sin correo usa códigos personales de un solo uso generados previamente en Configuración. Sin un código guardado, se requiere recuperación administrativa con comprobación de identidad. Conocer un correo no alcanza para recuperar una cuenta. No se permite editar el correo de la cuenta desde la interfaz.
 
 Con Supabase CLI: inicializar su configuración si falta con `supabase init`, vincular mediante `supabase link --project-ref TU_REFERENCIA` y usar `supabase db push`. Después de aplicar SQL por el editor o por API, registrar las versiones aplicadas con `supabase migration repair VERSION --status applied` antes de utilizar `db push`.
 
@@ -194,7 +194,7 @@ En Equipo cada integrante puede editar su propio nombre visible, y el organizado
 
 Migración `202610160006_advanced_expenses.sql`: libro de pagos separados, reparto por importes o porcentajes, snapshot con pagos y actividad privada. Se aplica en orden después de las cinco anteriores. Incluye comprobaciones transaccionales de preservación de gastos, repartos y pagadores anteriores; los gastos previamente pagados generan un pago equivalente, sin alterar sus importes históricos. El RPC anterior sigue siendo compatible con clientes ya abiertos.
 
-Una reserva guarda el total original y su TC base. Cada cuota registra el importe cancelado en esa misma moneda, su pagador y TC efectivo. El consumo real es la suma EUR de cuotas, el pendiente se convierte al TC base y las deudas se distribuyen según el reparto elegido. La asignación usa mayores restos con desempate por UUID para conservar centavos. Los pagos a proveedores y las transferencias entre integrantes son conceptos separados. La suma de pagos no puede exceder el total original. No se hacen cobros automáticos ni se programan vencimientos futuros.
+Una reserva guarda el total original y su TC base. Cada cuota registra el importe cancelado en esa misma moneda, su pagador y TC efectivo. El consumo real es la suma EUR de cuotas, el pendiente se convierte al TC base y las deudas se distribuyen según el reparto elegido. La asignación usa mayores restos con desempate por UUID para conservar centavos. Los pagos a proveedores y las transferencias entre integrantes son conceptos separados. La suma de pagos no puede exceder el total original. No se hacen cobros automáticos. Una fecha límite opcional permite consultar los vencimientos de reservas en el resumen; no envía alertas.
 
 Una vez registrados pagos, moneda, TC base, fecha de TC y pagador previsto quedan protegidos; se puede editar descripción, reparto y total si no queda debajo de lo ya pagado. Para corregir un pago, se anula desde detalles (creador u organizador) y se registra de nuevo. El historial inmutable conserva la operación. Actividad muestra los últimos 100 registros; no hay historial inventado previo a la migración.
 
@@ -215,3 +215,19 @@ Los formularios incluyen Consultar cotización online y Usar esta referencia. Fr
 `/api/rates` solo devuelve información pública de divisas; valida el mercado y no admite URL ni fecha arbitrarias. Consulta externa con tiempo límite y caché, validación de respuestas y salida 503 cuando no está disponible, manteniendo carga manual. Las páginas FinanzasArgy y Dolarito no fueron accesibles desde el proxy cloud; no se atribuye a ellas esta integración. Las referencias reales se comprobaron desde Vercel.
 
 En móvil, deslizar desde el borde izquierdo abre el menú; deslizar hacia la izquierda sobre él lo cierra. El botón existente sigue disponible. Los gestos verticales, campos y modales no abren el menú. La zona del borde y el panel permiten scroll vertical y zoom; no se impide el desplazamiento horizontal del resto del contenido. La disponibilidad del gesto desde el borde puede depender de los gestos reservados del navegador iOS; no se presenta una prueba de dispositivo físico.
+
+## Resumen diario, vencimientos y papelera
+
+Aplicar `202610170002_quality.sql` después de CZK. Agrega vencimiento opcional y borrado recuperable a gastos compartidos y privados. El snapshot, balances y CSV excluyen los archivados. Restaurar recupera el mismo registro, cuotas, reparto, enlaces y comprobantes; no crea una compra nueva. La papelera compartida es visible a integrantes; la privada solo a su autor. Los registros no se purgan automáticamente y los archivos conservados consumen almacenamiento. No recupera eliminaciones anteriores a esta migración.
+
+El aviso de duplicado compara descripción normalizada, importe, moneda y fecha dentro de la misma visibilidad; excluye el propio registro y su identificador de reintento. El usuario puede confirmar una compra distinta. Es un aviso preventivo, no garantiza detectar cargas simultáneas o descripciones diferentes.
+
+Tu día muestra consumo propio según la fecha de cada pago, compras privadas pagadas y saldo neto del viaje. La fecha inicial es la del dispositivo; permite elegir otro día. El reparto diario se calcula como diferencia entre asignaciones acumuladas, conservando los mismos centavos que el total del viaje. Las transferencias entre amigos solo afectan el saldo neto.
+
+## Recuperación gratuita con códigos personales
+
+Aplicar `202610170003_recovery_codes.sql`. Desde Configuración, confirmar contraseña actual y generar ocho códigos privados de un solo uso; descargarlos y guardarlos fuera de la app. Generarlos otra vez invalida los anteriores. `/recuperar` permite usar uno para establecer otra contraseña. Sin códigos preparados no hay recuperación automática por correo.
+
+La base almacena solo hashes SHA-256 en esquema privado. El RPC de consumo solo admite `service_role`, limita a 5 intentos por correo y 20 por dirección de red cada 15 minutos y no revela cuentas ante fallos. La dirección de red se transforma en HMAC antes de guardarla. Un código válido se consume antes de llamar a Auth Admin; si falla el proveedor, se debe usar otro código. Cambiar la contraseña no se presenta como revocación inmediata de todos los JWT existentes.
+
+**Variable adicional exclusivamente de servidor:** `SUPABASE_SERVICE_ROLE_KEY`, clave de ese proyecto, guardada como Sensitive en Vercel Production. Nunca usar prefijo `NEXT_PUBLIC_`, exponer en respuestas, commitear o usar en componentes cliente. La ruta `/api/recovery` es su único consumidor y solo permite el restablecimiento tras validar un código; el resto de las operaciones sigue con RLS y sesión normal. El token administrativo personal `SUPABASE_ACCESS_TOKEN` no se instala en Vercel. La clave de proyecto se transfirió por stdin sin escribirla a archivos ni logs. En local puede omitirse: la recuperación devuelve 503 explícito; el resto de la app sigue funcionando.

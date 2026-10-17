@@ -2,6 +2,8 @@ import type { HQData } from "@/lib/types";
 import { formatMoney, type Currency } from "@/lib/money";
 const labels: Record<string, string> = {
   description: "Descripción",
+  due_on: "Vencimiento",
+  deleted_at: "Papelera",
   amount_minor: "Importe",
   status: "Estado",
   split_method: "Reparto",
@@ -31,6 +33,7 @@ export function ActivityFeed({ data }: { data: HQData }) {
   const name = (id: unknown) =>
     data.members.find((m) => m.user_id === id)?.display_name ?? "Integrante";
   function value(key: string, v: unknown, row: Record<string, unknown>) {
+    if (key === "deleted_at") return v == null ? "Activo" : "En papelera";
     if (v == null) return "—";
     if (key === "payer_id") return name(v);
     if (key === "amount_minor" || key === "budget_minor")

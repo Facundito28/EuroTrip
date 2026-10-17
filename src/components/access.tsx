@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState } from "react";
 import {
   ArrowUpRight,
@@ -200,6 +201,11 @@ export function AccessScreen({
                   />
                 </label>
                 <PasswordInputs registration={signup} />
+                {!signup && (
+                  <Link href="/recuperar" className="text-button">
+                    Olvidé mi contraseña
+                  </Link>
+                )}
               </ActionForm>
               <p className="field-help auth-help">
                 No enviamos correos ni códigos de acceso. Guardá tu contraseña:

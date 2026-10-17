@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 const db = new PGlite();
-await db.exec(`create role anon; create role authenticated; create schema auth; create schema storage;
+await db.exec(`create role service_role; create role anon; create role authenticated; create schema auth; create schema storage;
 create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
 create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
 grant usage on schema auth,storage to authenticated,anon;grant execute on function auth.uid() to authenticated,anon;
@@ -44,6 +44,12 @@ await db.exec(
 await db.exec(
   readFileSync("supabase/migrations/202610170001_czech_currency.sql", "utf8"),
 );
+await db.exec(
+  readFileSync("supabase/migrations/202610170002_quality.sql", "utf8"),
+);
+await db.exec(
+  readFileSync("supabase/migrations/202610170003_recovery_codes.sql", "utf8"),
+);
 const passwords = new Map<string, string>();
 const identities = new Map<string, { id: string; email: string }>();
 const tables = new Set([
@@ -66,6 +72,12 @@ const functions = new Set([
   "accept_invitations",
   "save_expense",
   "save_expense_v2",
+  "save_expense_v4",
+  "possible_duplicate",
+  "generate_recovery_codes",
+  "consume_recovery_code",
+  "restore_expense",
+  "trash_personal_expense",
   "add_expense_payment",
   "delete_expense_payment",
   "mark_expense_paid",
@@ -151,7 +163,7 @@ createServer((req, res) => {
       if (url.pathname === "/health") return reply(200, { ready: true });
       if (url.pathname === "/reset") {
         await db.exec(
-          "reset role; truncate public.trips cascade; delete from auth.users",
+          "reset role; truncate public.trips cascade; delete from auth.users; delete from private.recovery_limits",
         );
         uploads.clear();
         files.clear();
@@ -205,6 +217,27 @@ createServer((req, res) => {
           ? reply(200, userObject(user))
           : reply(401, { message: "No session" });
       if (url.pathname === "/auth/v1/logout") return reply(200, {});
+      if (token === "isolated-test-admin-key") {
+        if (
+          url.pathname.startsWith("/auth/v1/admin/users/") &&
+          req.method === "PUT"
+        ) {
+          const id = url.pathname.split("/").at(-1);
+          const target = [...identities.values()].find((u) => u.id === id);
+          if (!target) return reply(404, { message: "User not found" });
+          passwords.set(target.email, String(body.password));
+          return reply(200, userObject(target));
+        }
+        if (url.pathname === "/rest/v1/rpc/consume_recovery_code") {
+          await db.exec("reset role; set role service_role");
+          const result = await db.query<{ v: string | null }>(
+            "select public.consume_recovery_code($1,$2,$3) v",
+            [body.p_email, body.p_code, body.p_client],
+          );
+          return reply(200, result.rows[0].v);
+        }
+        return reply(403, { message: "Unsupported admin test request" });
+      }
       if (!user)
         return reply(401, { message: "Not authenticated", code: "42501" });
       await db.exec("reset role");

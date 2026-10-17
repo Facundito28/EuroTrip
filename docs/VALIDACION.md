@@ -119,3 +119,13 @@ Se comprobaron respuestas REALES desde producción: Europa y los tres mercados A
 Verificador real Supabase aprobado incluyendo gasto y pago en CZK; limpieza completa de cinco cuentas temporales y sus datos. Lint, TypeScript y compilación aprobados antes de publicar; Vercel recompila la versión final.
 
 Publicación final READY `dpl_9JHSZ5MPgWTF58KCafnMNTHwcbqS`. Compilación y TypeScript aprobados en Vercel. Verificación posterior: referencias europeas 200, ARS blue 200, mercado inválido 400 y guía 200. Navegación táctil nativa validada tras esperar las transiciones del panel; no se omitió la prueba.
+
+## Vencimientos, papelera, resumen diario y recuperación sin correo
+
+Migraciones `202610170002_quality` y `202610170003_recovery_codes` aplicadas al proyecto real. Se compararon cantidades y sumas de gastos, cuotas, repartos y compras privadas antes y después: sin cambios. Vencimiento opcional, papelera separada por privacidad y snapshot sin archivados. Restaurar conserva el mismo registro y relaciones. No hay purga automática ni notificaciones de vencimiento.
+
+Resumen diario por fecha del dispositivo editable: participación propia en pagos del día y compras privadas pagadas. Redondeo mediante diferencia de asignación acumulada para coincidir con el total personal del viaje. Saldo neto separado de consumo. Importes primero en formularios, más tamaño y contraste, notas/vencimientos y explicaciones plegables, tarjetas móviles sin desbordes.
+
+Recuperación con ocho códigos aleatorios personales de un uso, generados tras confirmar contraseña actual. Hashes privados, sin códigos en snapshot ni logs; consumo solo por service_role. Límites de 5 intentos/correo y 20/red cada 15 minutos; huella de red HMAC. Variable de proyecto guardada como Sensitive y exclusivamente de servidor en Vercel mediante stdin, sin archivos ni exposición cliente. No se instaló el token administrativo personal en Vercel. Requiere guardar códigos previamente y no promete revocar inmediatamente JWT ya emitidos.
+
+68 pruebas unitarias/SQL aprobadas. Los 14 casos de navegador pasaron entre la suite (10) y la reejecución de los 4 afectados por etiquetas duplicadas/selector incorrecto del test, corregidos sin desactivar aserciones. Cubren vencimiento visible, duplicado con confirmación explícita, restauración y restablecimiento con rechazo de reutilización. Escritorio y Chromium con tamaño iPhone; no prueba física de Safari/iOS ni Android. TypeScript, lint, formato y compilación de producción aprobados.

@@ -852,3 +852,125 @@ test("named travel currencies, online quote confirmation and swipe navigation", 
     ),
   ).toBe(true);
 });
+test("deadlines, duplicate confirmation, recoverable trash and one-use password recovery", async ({
+  page,
+  request,
+}, info) => {
+  const email = `quality-${info.project.name}@example.test`;
+  await signIn(page, email);
+  await page
+    .getByText("Soy el organizador: crear un viaje", { exact: true })
+    .click();
+  await page.getByLabel("Tu nombre", { exact: true }).fill("Viajero calidad");
+  await page
+    .getByRole("button", { name: "Crear mi viaje", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Tu día, de un vistazo" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Transporte", exact: true }).click();
+  let dialog = page.getByRole("dialog");
+  await dialog
+    .getByLabel("Descripción", { exact: true })
+    .fill("Reserva para Londres");
+  await dialog.getByLabel("Importe original", { exact: true }).fill("123.45");
+  await dialog
+    .getByRole("combobox", { name: "Estado", exact: true })
+    .selectOption("reserved");
+  await dialog
+    .getByText("Más detalles · vencimiento y notas", { exact: true })
+    .click();
+  await dialog
+    .getByLabel("Fecha límite de pago (opcional)", { exact: true })
+    .fill("2027-04-25");
+  await dialog
+    .getByRole("button", { name: "Guardar gasto", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator(".due-panel")).toContainText(
+    "Reserva para Londres",
+  );
+  await navigate(page, "Gastos");
+  let row = page
+    .locator(".expense-row")
+    .filter({ hasText: "Reserva para Londres" });
+  await row
+    .getByText("Detalles, acciones y comprobantes", { exact: true })
+    .click();
+  await row.getByRole("button", { name: "Repetir gasto", exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await dialog
+    .getByRole("button", { name: "Guardar gasto", exact: true })
+    .click();
+  await expect(dialog.getByRole("alert")).toContainText("Ya hay un gasto");
+  await dialog
+    .getByLabel("Es otra compra, quiero guardarla igualmente.", { exact: true })
+    .check();
+  await dialog
+    .getByRole("button", { name: "Guardar gasto", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page.locator(".expense-row")).toHaveCount(2);
+  row = page
+    .locator(".expense-row")
+    .filter({ hasText: "Reserva para Londres" })
+    .first();
+  if (
+    !(await row
+      .getByRole("button", { name: "Eliminar", exact: true })
+      .isVisible())
+  )
+    await row
+      .getByText("Detalles, acciones y comprobantes", { exact: true })
+      .click();
+  page.once("dialog", (d) => d.accept());
+  await row.getByRole("button", { name: "Eliminar", exact: true }).click();
+  await expect(page.locator(".expense-row")).toHaveCount(1);
+  await page.locator(".trash-panel summary").click();
+  await page
+    .locator(".trash-panel")
+    .getByRole("button", { name: "Restaurar", exact: true })
+    .click();
+  await expect(page.locator(".expense-row")).toHaveCount(2);
+  await navigate(page, "Configuración");
+  await page
+    .getByText("Generar códigos de recuperación", { exact: true })
+    .click();
+  const recovery = page.locator("section.panel").filter({
+    has: page.getByRole("heading", {
+      name: "Recuperar tu cuenta",
+      exact: true,
+    }),
+  });
+  await recovery
+    .getByLabel("Confirmá tu contraseña para generar códigos", { exact: true })
+    .fill(TEST_PASSWORD);
+  await recovery
+    .getByRole("button", { name: "Generar mis códigos", exact: true })
+    .click();
+  const code = (await recovery.locator("pre").innerText()).split("\n")[0];
+  expect(code).toMatch(/^[a-f0-9]{32}$/);
+  await page.screenshot({
+    path: `test-results/quality-settings-${info.project.name}.png`,
+  });
+  await page.goto("/recuperar");
+  await page.getByLabel("Correo electrónico", { exact: true }).fill(email);
+  await page.getByLabel("Código de recuperación", { exact: true }).fill(code);
+  const nextPassword = "Mi-nueva-clave-segura-2027";
+  await page
+    .getByLabel("Elegí una contraseña", { exact: true })
+    .fill(nextPassword);
+  await page
+    .getByLabel("Repetí la contraseña", { exact: true })
+    .fill(nextPassword);
+  await page
+    .getByRole("button", { name: "Restablecer contraseña", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toContainText(
+    "Contraseña actualizada",
+  );
+  const reused = await request.post("/api/recovery", {
+    data: { email, code, password: TEST_PASSWORD },
+  });
+  expect(reused.status()).toBe(400);
+});

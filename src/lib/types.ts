@@ -37,6 +37,8 @@ export type Expense = {
   rate_date: string;
   occurred_on: string;
   status: Status;
+  due_on?: string | null;
+  deleted_at?: string | null;
   payer_id: string;
   created_by: string;
   notes: string;
@@ -125,6 +127,8 @@ export type HQData = {
   userId: string;
   personal_budget_minor?: number | null;
   personal_expenses?: PersonalExpense[];
+  trash?: Expense[];
+  personal_trash?: PersonalExpense[];
   payments?: ExpensePayment[];
   activity?: Activity[];
 };
@@ -166,6 +170,8 @@ export type PersonalExpense = Pick<
   | "rate_date"
   | "occurred_on"
   | "status"
+  | "due_on"
+  | "deleted_at"
   | "notes"
   | "created_at"
 > & { user_id: string };

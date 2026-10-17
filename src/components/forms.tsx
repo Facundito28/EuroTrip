@@ -164,6 +164,14 @@ export function ExpenseForm({
           cotización. No se copian pagos ni comprobantes.
         </p>
       )}
+      <MoneyFields
+        expense={
+          expense
+            ? { ...expense, rate_date: repeat ? today() : expense.rate_date }
+            : undefined
+        }
+        reviewRate={repeat}
+      />
       <label>
         Descripción
         <input
@@ -200,24 +208,7 @@ export function ExpenseForm({
           </select>
         </label>
       </div>
-      <MoneyFields
-        expense={
-          expense
-            ? { ...expense, rate_date: repeat ? today() : expense.rate_date }
-            : undefined
-        }
-        reviewRate={repeat}
-      />
       <div className="form-grid">
-        <label>
-          Fecha del gasto / reserva
-          <input
-            type="date"
-            name="occurred_on"
-            required
-            defaultValue={repeat ? today() : (expense?.occurred_on ?? today())}
-          />
-        </label>
         <label>
           Quién pagó / pagará
           <select
@@ -299,20 +290,40 @@ export function ExpenseForm({
           </div>
         </>
       )}
-      <p className="field-help">
-        Los centavos se distribuyen conservando el total exacto. Solo los pagos
-        generan deudas; una reserva permite registrar anticipos desde sus
-        detalles.
-      </p>
-      <label>
-        Notas
-        <textarea
-          name="notes"
-          maxLength={2000}
-          defaultValue={expense?.notes}
-          placeholder="Detalles, referencia de reserva…"
-        />
-      </label>
+      <details className="form-options">
+        <summary>Más detalles · vencimiento y notas</summary>
+        <label>
+          Fecha del gasto / reserva
+          <input
+            type="date"
+            name="occurred_on"
+            required
+            defaultValue={repeat ? today() : (expense?.occurred_on ?? today())}
+          />
+        </label>
+
+        <label>
+          Fecha límite de pago (opcional)
+          <input
+            type="date"
+            name="due_on"
+            defaultValue={!repeat ? (expense?.due_on ?? "") : ""}
+          />
+        </label>
+        <p className="field-help">
+          Para reservas pendientes. Te lo mostramos en el resumen; no envía
+          notificaciones.
+        </p>
+        <label>
+          Notas
+          <textarea
+            name="notes"
+            maxLength={2000}
+            defaultValue={expense?.notes}
+            placeholder="Referencia de reserva, detalles…"
+          />
+        </label>
+      </details>
     </ActionForm>
   );
 }

@@ -52,7 +52,7 @@ def main():
     def rpc(token, function, args):
         return request(BASE + "/rest/v1/rpc/" + function, "POST", args, token)
 
-    # Used only in memory for supported Auth Admin cleanup, never by the app.
+    # Used only in memory by this verifier; the app uses a separate server binding for recovery.
     keys = management("/api-keys?reveal=true")
     service_key = next((key.get("api_key") for key in keys if key.get("name") == "service_role"), None)
     if not service_key:
@@ -110,7 +110,11 @@ def main():
         assert request(BASE+"/rest/v1/personal_expenses?select=id",bearer=owner)==[]
         assert request(BASE+"/rest/v1/personal_expenses?select=id",bearer=tokens[2])==[]
         assert request(BASE+"/rest/v1/personal_expenses?id=eq."+private_id,"PATCH",{"description":"No permitido"},owner)==[]
-        assert request(BASE+"/rest/v1/personal_expenses?id=eq."+private_id,"DELETE",bearer=owner)==[]
+        try:
+            rpc(owner,"trash_personal_expense",{"p_id":private_id,"p_trip":trip})
+            raise AssertionError("Organizer archived another user's private spending")
+        except urllib.error.HTTPError as error:
+            assert error.code == 400
         assert all(a["label"]!="Compra privada temporal" for a in own_snapshot["activity"])
         assert all(e["description"]!="Compra privada temporal" for e in own_snapshot["expenses"])
         request(BASE+"/rest/v1/personal_expenses?id=eq."+private_id,"PATCH",{"amount_minor":1500},tokens[1])
@@ -174,6 +178,38 @@ def main():
         except urllib.error.HTTPError as error:
             assert error.code in (400, 403, 404)
         print("PASS: direct signed 5 MiB Storage upload, verified size, private download and outsider rejection.")
+        # Archive and restore retain receipt objects and actual payments.
+        rpc(owner,"delete_expense",{"p_id":expense,"p_trip":trip})
+        archived=rpc(owner,"hq_snapshot",{"p_trip":trip})
+        assert all(e["id"]!=expense for e in archived["expenses"])
+        assert any(e["id"]==expense for e in archived["trash"])
+        assert all(p["expense_id"]!=expense for p in archived["payments"])
+        rpc(tokens[1],"restore_expense",{"p_id":expense,"p_trip":trip})
+        restored=rpc(owner,"hq_snapshot",{"p_trip":trip})
+        assert next(e for e in restored["expenses"] if e["id"]==expense)["paid_eur_minor"]==9001
+        assert any(r["expense_id"]==expense for r in restored["receipts"])
+        assert request(BASE + "/storage/v1/object/info/receipts/" + object_path, bearer=owner)["size"]==len(png)
+        assert rpc(owner,"possible_duplicate",{"p_trip":trip,"p_description":payload["p_description"],"p_amount":payload["p_amount"],"p_currency":"USD","p_date":"2027-04-22"}) is True
+        rpc(tokens[1],"trash_personal_expense",{"p_id":private_id,"p_trip":trip})
+        assert rpc(owner,"hq_snapshot",{"p_trip":trip})["personal_trash"]==[]
+        assert any(e["id"]==private_id for e in rpc(tokens[1],"hq_snapshot",{"p_trip":trip})["personal_trash"])
+        rpc(tokens[1],"trash_personal_expense",{"p_id":private_id,"p_trip":trip,"p_restore":True})
+        print("PASS: archive/restore retain actual payments and 5 MiB receipt; private trash isolated; duplicate notice correct.")
+        recovery_codes=rpc(owner,"generate_recovery_codes",{})
+        assert len(recovery_codes)==8
+        # This production route uses its own server-only key, never the verifier's bearer.
+        new_recovered_password=secrets.token_urlsafe(24)
+        recovery_payload={"email":f"hq-check-{run}-0@example.com","code":recovery_codes[0],"password":new_recovered_password}
+        request("https://eurotrip-2027-travel-hq.vercel.app/api/recovery","POST",recovery_payload)
+        recovered=request(BASE+"/auth/v1/token?grant_type=password","POST",{"email":recovery_payload["email"],"password":new_recovered_password})
+        assert recovered.get("access_token")
+        owner=recovered["access_token"]
+        try:
+            request("https://eurotrip-2027-travel-hq.vercel.app/api/recovery","POST",recovery_payload)
+            raise AssertionError("Recovery code reused")
+        except urllib.error.HTTPError as error:
+            assert error.code==400
+        print("PASS: deployed password recovery and real Supabase login; consumed code rejected.")
         updated_password = secrets.token_urlsafe(24)
         request(BASE + "/auth/v1/user", "PUT", {"password": updated_password}, owner)
         session = request(BASE + "/auth/v1/token?grant_type=password", "POST", {"email": f"hq-check-{run}-0@example.com", "password": updated_password})

@@ -20,6 +20,8 @@ export type ActionResult = {
   ok: boolean;
   message: string;
   invitationCode?: string;
+  duplicate?: boolean;
+  recoveryCodes?: string[];
   redirectTo?: string;
   upload?: { path: string; signedUrl: string };
 };
@@ -28,6 +30,7 @@ const text = (max: number) =>
   z.string().trim().min(1, "Completá los campos obligatorios.").max(max);
 const date = z.iso.date();
 const get = (f: FormData, k: string) => String(f.get(k) ?? "");
+class DuplicateWarning extends Error {}
 function dbError(error: { message: string; code?: string }) {
   if (error.code === "42501")
     return new Error("No tenés permiso para realizar esta operación.");
@@ -56,6 +59,7 @@ async function perform(
   } catch (error) {
     return {
       ok: false,
+      duplicate: error instanceof DuplicateWarning,
       message:
         error instanceof z.ZodError
           ? (error.issues[0]?.message ?? "Revisá los campos.")
@@ -186,12 +190,13 @@ export async function saveExpense(f: FormData) {
   return perform(async () => {
     const { client } = await session();
     const money = monetary(f);
+    await warnDuplicate(client, f, money, false);
     const members = z
       .array(uuid)
       .min(1, "Elegí al menos un participante.")
       .max(4)
       .parse(f.getAll("members"));
-    const { error } = await client.rpc("save_expense_v2", {
+    const { error } = await client.rpc("save_expense_v4", {
       p_id: get(f, "id") ? uuid.parse(get(f, "id")) : null,
       p_request: uuid.parse(get(f, "request_id")),
       p_trip: uuid.parse(get(f, "trip_id")),
@@ -207,6 +212,7 @@ export async function saveExpense(f: FormData) {
         .parse(get(f, "status")),
       p_payer: uuid.parse(get(f, "payer_id")),
       p_members: members,
+      p_due: get(f, "due_on") ? date.parse(get(f, "due_on")) : null,
       p_method: z
         .enum(["equal", "amount", "percent"])
         .parse(get(f, "split_method") || "equal"),
@@ -236,28 +242,12 @@ export async function deleteExpense(f: FormData) {
     const { client } = await session();
     const trip = uuid.parse(get(f, "trip_id")),
       id = uuid.parse(get(f, "id"));
-    // Delete storage before ledger deletion so failed cleanup remains retryable.
-    const { data: receipts, error: readError } = await client
-      .from("receipts")
-      .select("path")
-      .eq("expense_id", id)
-      .eq("trip_id", trip);
-    if (readError) throw dbError(readError);
-    if (receipts?.length) {
-      const { error } = await client.storage
-        .from("receipts")
-        .remove(receipts.map((r) => r.path));
-      if (error)
-        throw new Error(
-          "No se pudieron eliminar los comprobantes. Intentá nuevamente.",
-        );
-    }
     const { error } = await client.rpc("delete_expense", {
       p_id: id,
       p_trip: trip,
     });
     if (error) throw dbError(error);
-    return "Gasto eliminado.";
+    return "Gasto enviado a la papelera. Podés restaurarlo con sus pagos y comprobantes.";
   });
 }
 export async function saveSettlement(f: FormData) {
@@ -607,10 +597,13 @@ export async function deleteExpensePayment(f: FormData) {
 export async function savePersonalExpense(f: FormData) {
   return perform(async () => {
     const { client, user } = await session();
+    const money = monetary(f);
+    await warnDuplicate(client, f, money, true);
     const record = {
       description: text(160).parse(get(f, "description")),
       category: z.enum(categories).parse(get(f, "category")),
-      ...monetary(f),
+      ...money,
+      due_on: get(f, "due_on") ? date.parse(get(f, "due_on")) : null,
       occurred_on: date.parse(get(f, "occurred_on")),
       status: z.enum(["paid", "reserved", "estimated"]).parse(get(f, "status")),
       notes: z.string().max(2000).parse(get(f, "notes")),
@@ -642,16 +635,78 @@ export async function savePersonalExpense(f: FormData) {
 }
 export async function deletePersonalExpense(f: FormData) {
   return perform(async () => {
-    const { client, user } = await session();
-    const { data, error } = await client
-      .from("personal_expenses")
-      .delete()
-      .eq("id", uuid.parse(get(f, "id")))
-      .eq("trip_id", uuid.parse(get(f, "trip_id")))
-      .eq("user_id", user.id)
-      .select("id");
+    const { client } = await session();
+    const { error } = await client.rpc("trash_personal_expense", {
+      p_id: uuid.parse(get(f, "id")),
+      p_trip: uuid.parse(get(f, "trip_id")),
+      p_restore: false,
+    });
     if (error) throw dbError(error);
-    if (!data?.length) throw new Error("No se encontró tu gasto personal.");
-    return "Gasto personal eliminado.";
+    return "Compra privada enviada a tu papelera.";
   });
+}
+
+async function warnDuplicate(
+  client: Awaited<ReturnType<typeof supabase>>,
+  f: FormData,
+  money: ReturnType<typeof monetary>,
+  personal: boolean,
+) {
+  if (get(f, "duplicate_confirmed") === "yes") return;
+  const { data, error } = await client.rpc("possible_duplicate", {
+    p_trip: uuid.parse(get(f, "trip_id")),
+    p_description: text(160).parse(get(f, "description")),
+    p_amount: money.amount_minor,
+    p_currency: money.currency,
+    p_date: date.parse(get(f, "occurred_on")),
+    p_id: get(f, "id") ? uuid.parse(get(f, "id")) : null,
+    p_request: uuid.parse(get(f, "request_id")),
+    p_private: personal,
+  });
+  if (error) throw dbError(error);
+  if (data)
+    throw new DuplicateWarning(
+      "Ya hay un gasto con la misma descripción, importe, moneda y fecha. Revisá si es el mismo antes de confirmar otro.",
+    );
+}
+export async function restoreExpense(f: FormData) {
+  return perform(async () => {
+    const { client } = await session();
+    const { error } = await client.rpc(
+      get(f, "private") === "yes"
+        ? "trash_personal_expense"
+        : "restore_expense",
+      get(f, "private") === "yes"
+        ? {
+            p_id: uuid.parse(get(f, "id")),
+            p_trip: uuid.parse(get(f, "trip_id")),
+            p_restore: true,
+          }
+        : {
+            p_id: uuid.parse(get(f, "id")),
+            p_trip: uuid.parse(get(f, "trip_id")),
+          },
+    );
+    if (error) throw dbError(error);
+    return "Gasto restaurado con sus importes originales.";
+  });
+}
+
+export async function generateRecoveryCodes(
+  f: FormData,
+): Promise<ActionResult> {
+  let codes: string[] = [];
+  const result = await perform(async () => {
+    const { client, user } = await session();
+    const { error: check } = await client.auth.signInWithPassword({
+      email: user.email!,
+      password: get(f, "current_password"),
+    });
+    if (check) throw new Error("La contraseña actual es incorrecta.");
+    const { data, error } = await client.rpc("generate_recovery_codes");
+    if (error) throw dbError(error);
+    codes = data;
+    return "Guardá estos códigos fuera de la app. Cada uno sirve una sola vez; los anteriores quedaron invalidados.";
+  });
+  return result.ok ? { ...result, recoveryCodes: codes } : result;
 }

@@ -2786,3 +2786,149 @@ select {
     touch-action: pan-y pinch-zoom;
   }
 }
+
+/* Clearer amounts, deadlines and optional form detail on small screens. */
+.day-overview {
+  border-color: #768c4c;
+  background: linear-gradient(135deg, #202c22, #18201b);
+}
+.day-overview .eyebrow {
+  color: #c8ec98;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+}
+.day-overview .personal-totals {
+  margin-bottom: 0;
+}
+.personal-totals small {
+  display: block;
+  color: var(--muted);
+  margin-top: 0.65rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+.personal-totals strong,
+.due-list strong {
+  font-variant-numeric: tabular-nums;
+}
+.form-options {
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: 14px;
+  margin: 1rem 0;
+}
+.form-options[open] summary {
+  margin-bottom: 1.25rem;
+}
+.due-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.due-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.due-list li:last-child {
+  border-bottom: 0;
+}
+.due-list li > div {
+  min-width: 0;
+}
+.due-list h3 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+}
+.due-list small,
+.empty-hint {
+  color: var(--muted);
+  line-height: 1.65;
+  font-size: 0.85rem;
+}
+.due-list strong {
+  display: block;
+  white-space: nowrap;
+}
+.due-late {
+  background: #55382a;
+  color: #ffd5b7;
+}
+.trash-panel {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem;
+  background: #131a15;
+  border: 1px dashed #627160;
+  border-radius: 14px;
+}
+.duplicate-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid #b79d54;
+  border-radius: 12px;
+}
+.duplicate-confirm input {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+input[name="amount"] {
+  font-size: 1.6rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+@media (max-width: 650px) {
+  .day-overview .panel-heading {
+    align-items: stretch;
+  }
+  .due-list li {
+    align-items: flex-start;
+  }
+  .due-list .text-button {
+    padding: 0.6rem 0;
+  }
+  .personal-totals strong {
+    font-size: clamp(1.3rem, 5.2vw, 1.8rem);
+  }
+}
+.recovery-page {
+  width: 100%;
+  max-width: 540px;
+  margin: auto;
+}
+.recovery-codes {
+  padding: 1rem;
+  margin-top: 1rem;
+  border: 1px solid #a9ce6a;
+  border-radius: 14px;
+}
+.recovery-codes pre {
+  overflow: auto;
+  font-size: 0.8rem;
+  padding: 1rem 0;
+  user-select: all;
+}
+.budget-help > summary {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+@media (max-width: 650px) {
+  .dashboard-columns .empty-state {
+    min-height: 130px;
+    padding: 1.5rem 0.5rem;
+  }
+  .day-overview .personal-totals {
+    grid-template-columns: 1fr;
+    gap: 1.1rem;
+  }
+  .day-overview .personal-totals > div + div {
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+}

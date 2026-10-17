@@ -23,7 +23,7 @@ async function fails(sql: string, params: unknown[] = []) {
 }
 beforeAll(async () => {
   db = new PGlite();
-  await db.exec(`create role anon; create role authenticated; create schema auth; create schema storage;
+  await db.exec(`create role service_role; create role anon; create role authenticated; create schema auth; create schema storage;
     create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);
     create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
     grant usage on schema auth,storage to authenticated,anon; grant execute on function auth.uid() to authenticated,anon;
@@ -73,6 +73,12 @@ beforeAll(async () => {
   );
   await db.exec(
     readFileSync("supabase/migrations/202610170001_czech_currency.sql", "utf8"),
+  );
+  await db.exec(
+    readFileSync("supabase/migrations/202610170002_quality.sql", "utf8"),
+  );
+  await db.exec(
+    readFileSync("supabase/migrations/202610170003_recovery_codes.sql", "utf8"),
   );
   await as(0);
   trip = (
@@ -672,14 +678,7 @@ it("private purchases remain invisible to fellow travelers and the organizer", a
       )
     ).rows,
   ).toHaveLength(0);
-  expect(
-    (
-      await db.query(
-        "delete from public.personal_expenses where id=$1 returning id",
-        [id],
-      )
-    ).rows,
-  ).toHaveLength(0);
+  await fails("select public.trash_personal_expense($1,$2)", [id, trip]);
   await fails(
     "insert into public.personal_expenses(trip_id,user_id,description,category,amount_minor,currency,rate_to_eur,rate_date,occurred_on,status) values($1,$2,'Fake','Comida',1,'EUR',1,'2027-04-22','2027-04-22','paid')",
     [trip, users[1]],
@@ -689,7 +688,7 @@ it("private purchases remain invisible to fellow travelers and the organizer", a
     users[0],
     id,
   ]);
-  await db.query("delete from public.personal_expenses where id=$1", [id]);
+  await db.query("select public.trash_personal_expense($1,$2)", [id, trip]);
 });
 it("accepts Czech koruna in shared expenses, private purchases, scenarios and settlements", async () => {
   await as(0);
@@ -730,4 +729,132 @@ it("accepts Czech koruna in shared expenses, private purchases, scenarios and se
     "insert into public.scenario_items(trip_id,scenario_id,description,amount_minor,currency,rate_to_eur,rate_date,confidence) values($1,$2,'Tranvía',10000,'CZK',0.04,'2027-04-22','estimated')",
     [trip, scenario],
   );
+});
+it("archives and restores shared spending without losing payments or allocation, and isolates private trash", async () => {
+  await as(0);
+  const id = (
+    await db.query<{ id: string }>(
+      "select public.save_expense_v4(null,$1,'Reserva con vencimiento','Transporte',10001,'EUR',1,'2027-04-22','2027-04-22','paid',$2,$3,'',$4,'equal',null,'2027-04-24') id",
+      [trip, users[0], users.slice(0, 2), crypto.randomUUID()],
+    )
+  ).rows[0].id;
+  await db.query("select public.delete_expense($1,$2)", [id, trip]);
+  let snapshot = (
+    await db.query<{ v: import("../src/lib/types").HQData }>(
+      "select public.hq_snapshot($1) v",
+      [trip],
+    )
+  ).rows[0].v;
+  expect(snapshot.expenses.some((e) => e.id === id)).toBe(false);
+  expect(snapshot.payments!.some((p) => p.expense_id === id)).toBe(false);
+  expect(snapshot.shares.some((p) => p.expense_id === id)).toBe(false);
+  expect(snapshot.trash!.find((e) => e.id === id)?.due_on).toBe("2027-04-24");
+  await fails(
+    "select public.add_expense_payment($1,$2,$3,$4,1,1,'2027-04-22','2027-04-22','')",
+    [trip, id, crypto.randomUUID(), users[0]],
+  );
+  await as(4);
+  await fails("select public.restore_expense($1,$2)", [id, trip]);
+  await as(1);
+  await db.query("select public.restore_expense($1,$2)", [id, trip]);
+  snapshot = (
+    await db.query<{ v: import("../src/lib/types").HQData }>(
+      "select public.hq_snapshot($1) v",
+      [trip],
+    )
+  ).rows[0].v;
+  expect(
+    Number(snapshot.expenses.find((e) => e.id === id)?.paid_eur_minor),
+  ).toBe(10001);
+  expect(snapshot.payments!.filter((p) => p.expense_id === id)).toHaveLength(1);
+  expect(snapshot.shares.filter((s) => s.expense_id === id)).toHaveLength(2);
+  const pid = (
+    await db.query<{ id: string }>(
+      "insert into public.personal_expenses(trip_id,description,category,amount_minor,currency,rate_to_eur,rate_date,occurred_on,status) values($1,'Privado archivado','Comida',100,'EUR',1,'2027-04-22','2027-04-22','paid') returning id",
+      [trip],
+    )
+  ).rows[0].id;
+  await db.query("select public.trash_personal_expense($1,$2)", [pid, trip]);
+  await fails(
+    "update public.personal_expenses set description='No editar archivado' where id=$1",
+    [pid],
+  );
+  await as(0);
+  expect(
+    (
+      await db.query<{ v: import("../src/lib/types").HQData }>(
+        "select public.hq_snapshot($1) v",
+        [trip],
+      )
+    ).rows[0].v.personal_trash,
+  ).toEqual([]);
+  await fails("select public.trash_personal_expense($1,$2,true)", [pid, trip]);
+  await as(1);
+  await db.query("select public.trash_personal_expense($1,$2,true)", [
+    pid,
+    trip,
+  ]);
+});
+it("flags same-date same-currency normalized duplicates without exposing another user's private spending", async () => {
+  await as(0);
+  const args = [trip, "  METRO   PRAGA ", 10000, "CZK", "2027-04-22"];
+  const check = async (values: unknown[]) =>
+    (
+      await db.query<{ v: boolean }>(
+        "select public.possible_duplicate($1,$2,$3,$4,$5) v",
+        values,
+      )
+    ).rows[0].v;
+  expect(await check(args)).toBe(true);
+  expect(await check([trip, "Metro Praga", 10001, "CZK", "2027-04-22"])).toBe(
+    false,
+  );
+  expect(await check([trip, "Metro Praga", 10000, "CZK", "2027-04-23"])).toBe(
+    false,
+  );
+  await as(1);
+  expect(
+    (
+      await db.query<{ v: boolean }>(
+        "select public.possible_duplicate($1,'Mi café en Praga',10000,'CZK','2027-04-22',null,null,true) v",
+        [trip],
+      )
+    ).rows[0].v,
+  ).toBe(false);
+});
+it("keeps recovery hashes private, codes single-use and admin-only consumption rate limited", async () => {
+  await as(0);
+  const codes = (
+    await db.query<{ v: string[] }>("select public.generate_recovery_codes() v")
+  ).rows[0].v;
+  expect(codes).toHaveLength(8);
+  expect(new Set(codes).size).toBe(8);
+  await fails("select * from private.recovery_codes");
+  await fails("select public.consume_recovery_code('u0@test.com',$1,$2)", [
+    codes[0],
+    "a".repeat(64),
+  ]);
+  await db.exec("reset role; set role service_role");
+  const consume = async (code: string, email = "u0@test.com") =>
+    (
+      await db.query<{ v: string | null }>(
+        "select public.consume_recovery_code($1,$2,$3) v",
+        [email, code, "a".repeat(64)],
+      )
+    ).rows[0].v;
+  expect(await consume(codes[0])).toBe(users[0]);
+  expect(await consume(codes[0])).toBeNull();
+  for (let i = 0; i < 4; i++) expect(await consume("0".repeat(32))).toBeNull();
+  expect(await consume(codes[1])).toBeNull();
+  await as(1);
+  const other = (
+    await db.query<{ v: string[] }>("select public.generate_recovery_codes() v")
+  ).rows[0].v;
+  await db.exec("reset role; set role service_role");
+  expect(await consume(other[0], "u1@test.com")).toBe(users[1]);
+  await as(0);
+  const rotated = (
+    await db.query<{ v: string[] }>("select public.generate_recovery_codes() v")
+  ).rows[0].v;
+  expect(rotated).not.toContain(codes[1]);
 });

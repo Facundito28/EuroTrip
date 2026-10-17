@@ -6,6 +6,7 @@ import { categories } from "@/lib/types";
 import { formatMoney } from "@/lib/money";
 import { savePersonalExpense, deletePersonalExpense } from "@/lib/actions";
 import { ActionForm, HiddenTrip } from "./action-form";
+import { TrashPanel } from "./trip-overview";
 import { MoneyFields, ExpenseForm } from "./forms";
 export function PersonalExpenseForm({
   data,
@@ -33,6 +34,7 @@ export function PersonalExpenseForm({
         <HiddenTrip id={data.trip.id} />
         <input name="id" type="hidden" value={expense?.id ?? ""} />
         <input name="request_id" type="hidden" value={request} />
+        <MoneyFields expense={expense} />
         <label>
           Descripción
           <input
@@ -64,7 +66,6 @@ export function PersonalExpenseForm({
             </select>
           </label>
         </div>
-        <MoneyFields expense={expense} />
         <label>
           Fecha de mi gasto
           <input
@@ -76,14 +77,25 @@ export function PersonalExpenseForm({
             }
           />
         </label>
-        <label>
-          Notas privadas
-          <textarea
-            name="notes"
-            maxLength={2000}
-            defaultValue={expense?.notes}
-          />
-        </label>
+        <details className="form-options">
+          <summary>Más detalles · vencimiento y notas</summary>
+          <label>
+            Fecha límite de pago (opcional)
+            <input
+              name="due_on"
+              type="date"
+              defaultValue={expense?.due_on ?? ""}
+            />
+          </label>
+          <label>
+            Notas privadas
+            <textarea
+              name="notes"
+              maxLength={2000}
+              defaultValue={expense?.notes}
+            />
+          </label>
+        </details>
       </ActionForm>
     </>
   );
@@ -203,6 +215,7 @@ export function PrivateExpenses({
           No aparecen en Gastos compartidos ni en Actividad.
         </p>
       )}
+      <TrashPanel data={data} personal />
     </section>
   );
 }

@@ -156,3 +156,37 @@ export function paidShares(e: Expense, shares: Share[]) {
     ? splitWeighted(paidAmount(e), weights)
     : {};
 }
+
+/** Daily consumption uses the date of each payment, including advances. */
+export function dailyConsumption(
+  userId: string,
+  day: string,
+  expenses: Expense[],
+  shares: Share[],
+  payments: ExpensePayment[],
+  privateExpenses: PersonalExpense[],
+) {
+  let shared = 0;
+  for (const expense of expenses) {
+    const ledger = payments.filter((p) => p.expense_id === expense.id);
+    const before = ledger
+      .filter((p) => p.occurred_on < day)
+      .reduce((sum, p) => sum + p.eur_minor, 0);
+    const through = ledger
+      .filter((p) => p.occurred_on <= day)
+      .reduce((sum, p) => sum + p.eur_minor, 0);
+    const weights = Object.fromEntries(
+      shares
+        .filter((s) => s.expense_id === expense.id)
+        .map((s) => [s.member_id, s.weight ?? s.amount_minor]),
+    );
+    if (through > before && Object.values(weights).some((w) => w > 0))
+      shared +=
+        (splitWeighted(through, weights)[userId] ?? 0) -
+        (splitWeighted(before, weights)[userId] ?? 0);
+  }
+  const personal = privateExpenses
+    .filter((e) => e.status === "paid" && e.occurred_on === day)
+    .reduce((sum, e) => sum + e.eur_minor, 0);
+  return { shared, personal, total: shared + personal };
+}

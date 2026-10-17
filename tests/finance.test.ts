@@ -219,3 +219,64 @@ it("personal budget includes private purchases without changing shared balances 
     d: 0,
   });
 });
+it("daily consumption allocates payment dates, counts only one's private paid purchases and preserves cents", async () => {
+  const { dailyConsumption } = await import("../src/lib/finance");
+  const e = { ...expense("daily", "reserved", 10001), paid_eur_minor: 4001 };
+  const shares = ["a", "b"].map((member_id) => ({
+    expense_id: "daily",
+    member_id,
+    amount_minor: 5000,
+    weight: 1,
+    trip_id: "trip",
+  }));
+  const payments = [
+    { expense_id: "daily", occurred_on: "2027-04-23", eur_minor: 4001 },
+  ] as import("../src/lib/types").ExpensePayment[];
+  const privateExpenses = [
+    {
+      ...expense("private", "paid", 1200),
+      user_id: "a",
+      occurred_on: "2027-04-23",
+    },
+    {
+      ...expense("reservation", "reserved", 5000),
+      user_id: "a",
+      occurred_on: "2027-04-23",
+    },
+  ] as import("../src/lib/types").PersonalExpense[];
+  expect(
+    dailyConsumption("a", "2027-04-23", [e], shares, payments, privateExpenses),
+  ).toEqual({ shared: 2001, personal: 1200, total: 3201 });
+  expect(
+    dailyConsumption("b", "2027-04-23", [e], shares, payments, []).shared,
+  ).toBe(2000);
+  expect(
+    dailyConsumption("a", "2027-04-22", [e], shares, payments, privateExpenses)
+      .total,
+  ).toBe(0);
+});
+it("daily allocation carries rounding so totals across days equal the trip share", async () => {
+  const { dailyConsumption } = await import("../src/lib/finance");
+  const e = expense("carry", "reserved", 2);
+  const shares = ["a", "b"].map((member_id) => ({
+    expense_id: "carry",
+    member_id,
+    amount_minor: 1,
+    weight: 1,
+    trip_id: "trip",
+  }));
+  const payments = ["2027-04-22", "2027-04-23"].map((occurred_on) => ({
+    expense_id: "carry",
+    eur_minor: 1,
+    occurred_on,
+  })) as import("../src/lib/types").ExpensePayment[];
+  expect(
+    dailyConsumption("a", "2027-04-22", [e], shares, payments, []).shared,
+  ).toBe(1);
+  expect(
+    dailyConsumption("a", "2027-04-23", [e], shares, payments, []).shared,
+  ).toBe(0);
+  expect(
+    dailyConsumption("b", "2027-04-23", [e], shares, payments, []).shared,
+  ).toBe(1);
+});

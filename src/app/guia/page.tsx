@@ -46,7 +46,7 @@ const steps = [
   ],
   [
     "4. Separar pagos y planes",
-    "Pagado es dinero efectivamente gastado. Reservado es un compromiso pendiente de pago. Estimado es solo una idea. Cuando paguen una reserva, editen el mismo registro o márquenlo pagado: no creen otro gasto por el total. Las reservas reducen el disponible, pero solo los pagos generan deudas entre amigos. Los comprobantes se adjuntan desde Gastos y quedan privados para el grupo.",
+    "Pagado es dinero efectivamente gastado. Reservado es un compromiso pendiente de pago. Estimado es solo una idea. Cuando paguen una reserva, editen el mismo registro o márquenlo pagado: no creen otro gasto por el total. Las reservas reducen el disponible, pero solo los pagos generan deudas entre amigos. Los comprobantes se adjuntan desde Gastos y quedan privados para el grupo. En Más detalles podés cargar fecha límite de una reserva: aparece en Próximos pagos. Eliminar manda el gasto a la papelera: deja de sumar y se puede restaurar con sus pagos y comprobantes. La papelera privada solo la ves vos. Si cargás la misma descripción, importe, moneda y fecha, la app avisa para evitar repetir la compra.",
   ],
   [
     "5. Devolverse dinero",
@@ -70,7 +70,7 @@ const steps = [
   ],
   [
     "10. Usarla desde el celular",
-    "iPhone y iPad: abrí la app en Safari, Compartir y Agregar a inicio. Android: Chrome, menú e Instalar aplicación o Agregar a pantalla principal. También funciona en PC. Necesitás Internet para consultar o guardar los datos privados; no se sincronizan cambios sin conexión. Guardá tu contraseña: la recuperación por correo todavía no está habilitada.",
+    "iPhone y iPad: abrí la app en Safari, Compartir y Agregar a inicio. Android: Chrome, menú e Instalar aplicación o Agregar a pantalla principal. También funciona en PC. Necesitás Internet para consultar o guardar los datos privados; no se sincronizan cambios sin conexión. En Configuración, generá y guardá tus códigos privados de recuperación. Si olvidás tu contraseña, entrá en Olvidé mi contraseña y usá uno. No los compartas: cada uno permite restablecer tu cuenta una sola vez. No se envían correos.",
   ],
 ];
 export default function Guide() {

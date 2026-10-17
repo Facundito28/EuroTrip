@@ -72,6 +72,8 @@ import { useSwipeMenu } from "./use-swipe-menu";
 import { MemberName } from "./member-name";
 import { TripMap } from "./trip-map";
 import { googleCalendarUrl } from "@/lib/agenda";
+import { TripOverview, TrashPanel } from "./trip-overview";
+import { RecoveryCodes } from "./recovery";
 import { PersonalBudget } from "./personal-budget";
 import { InstallButton } from "./pwa";
 const tabs = [
@@ -573,6 +575,19 @@ export function HQ({ data }: { data: HQData }) {
                   )}
                 </div>
               </section>
+              <TripOverview
+                data={data}
+                onOpen={(expense, personal) =>
+                  setModal(
+                    personal
+                      ? {
+                          kind: "personal",
+                          expense: expense as PersonalExpense,
+                        }
+                      : { kind: "expense", expense: expense as Expense },
+                  )
+                }
+              />
               <PersonalBudget
                 data={data}
                 onAddPersonal={() => setModal({ kind: "personal" })}
@@ -773,6 +788,7 @@ export function HQ({ data }: { data: HQData }) {
           )}
           {tab === "expenses" && (
             <section className="panel">
+              <TrashPanel data={data} />
               <div className="table-toolbar">
                 <label className="search-field">
                   <span className="sr-only">Buscar gastos</span>
@@ -916,7 +932,7 @@ export function HQ({ data }: { data: HQData }) {
                               action={deleteExpense}
                               label="Eliminar"
                               className="inline-action danger-action"
-                              confirm="¿Eliminar este gasto y sus comprobantes? Se recalcularán los saldos."
+                              confirm="¿Enviar este gasto a la papelera? Deja de sumar a los saldos. Podés restaurarlo con sus pagos y comprobantes."
                             >
                               <HiddenTrip id={data.trip.id} />
                               <input type="hidden" name="id" value={e.id} />
@@ -1491,6 +1507,7 @@ export function HQ({ data }: { data: HQData }) {
                   </p>
                   <ChangePasswordForm />
                 </section>
+                <RecoveryCodes />
                 <section className="panel">
                   <h2>Tu app, siempre a mano</h2>
                   <p>

@@ -78,6 +78,17 @@ export function ActionForm({
           {result.message}
         </p>
       )}
+      {result?.duplicate && (
+        <label className="duplicate-confirm">
+          <input
+            name="duplicate_confirmed"
+            type="checkbox"
+            value="yes"
+            required
+          />
+          Es otra compra, quiero guardarla igualmente.
+        </label>
+      )}
       <button
         className="button primary"
         disabled={pending || !hydrated}

@@ -126,11 +126,14 @@ export function PersonalBudget({
           </div>
         ))}
       </div>
-      <p className="field-help">
-        Las estimaciones ({money(mine.estimated)}) se muestran aparte. Las
-        devoluciones entre amigos no son consumos. Tu límite es privado y no
-        modifica el presupuesto grupal.
-      </p>
+      <details className="budget-help">
+        <summary>Cómo se calcula mi presupuesto</summary>
+        <p className="field-help">
+          Las estimaciones ({money(mine.estimated)}) se muestran aparte. Las
+          devoluciones entre amigos no son consumos. Tu límite es privado y no
+          modifica el presupuesto grupal.
+        </p>
+      </details>
       <details>
         <summary>Ver totales del grupo en {currency}</summary>
         <div className="personal-totals">
@@ -147,14 +150,17 @@ export function PersonalBudget({
           ))}
         </div>
       </details>
-      <p className="field-help">
-        {rate
-          ? `Cotización manual de consulta: 1 EUR = ${rate} USD · ${data.trip.display_rate_date}.`
-          : "Sin cotización USD/EUR: el organizador puede definirla abajo."}{" "}
-        El equivalente en USD es orientativo: parte de los importes EUR
-        registrados. Cada gasto conserva su importe original y su propia
-        cotización histórica.
-      </p>
+      <details className="budget-help">
+        <summary>Sobre la conversión EUR / USD</summary>
+        <p className="field-help">
+          {rate
+            ? `Cotización manual de consulta: 1 EUR = ${rate} USD · ${data.trip.display_rate_date}.`
+            : "Sin cotización USD/EUR: el organizador puede definirla abajo."}{" "}
+          El equivalente en USD es orientativo: parte de los importes EUR
+          registrados. Cada gasto conserva su importe original y su propia
+          cotización histórica.
+        </p>
+      </details>
       {data.trip.owner_id === data.userId && (
         <details>
           <summary>Configurar cotización USD/EUR</summary>
