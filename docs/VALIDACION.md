@@ -117,3 +117,5 @@ Se comprobaron respuestas REALES desde producción: Europa y los tres mercados A
 63 pruebas unitarias/SQL aprobadas y las 12 pruebas de navegador aprobadas entre la suite y ejecuciones dirigidas. La nueva prueba guarda CZK, valida nombres y confirma explícitamente una referencia. Gesto probado con pointer events y entrada táctil nativa de Chromium/CDP: abrir desde borde, cerrar, ignorar scroll vertical. Se respetó la transición del panel y el touch-action del overlay; no se presenta como prueba física de Safari. El navegador del sistema puede reservar el gesto de retroceso en iOS.
 
 Verificador real Supabase aprobado incluyendo gasto y pago en CZK; limpieza completa de cinco cuentas temporales y sus datos. Lint, TypeScript y compilación aprobados antes de publicar; Vercel recompila la versión final.
+
+Publicación final READY `dpl_9JHSZ5MPgWTF58KCafnMNTHwcbqS`. Compilación y TypeScript aprobados en Vercel. Verificación posterior: referencias europeas 200, ARS blue 200, mercado inválido 400 y guía 200. Navegación táctil nativa validada tras esperar las transiciones del panel; no se omitió la prueba.
