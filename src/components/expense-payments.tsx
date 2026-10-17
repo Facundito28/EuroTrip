@@ -4,6 +4,7 @@ import type { Expense, HQData } from "@/lib/types";
 import { decimalAmount, formatMoney } from "@/lib/money";
 import { paidAmount, remainingOriginal, remainingAmount } from "@/lib/finance";
 import { addExpensePayment, deleteExpensePayment } from "@/lib/actions";
+import { RateInputs } from "./rate-inputs";
 import { ActionForm, HiddenTrip } from "./action-form";
 export function ExpensePayments({
   data,
@@ -83,27 +84,22 @@ export function ExpensePayments({
                 ))}
               </select>
             </label>
-            <div className="form-grid">
-              <label>
-                EUR por 1 {e.currency} de este pago
+            {e.currency === "EUR" ? (
+              <>
+                <input type="hidden" name="rate" value="1" />
                 <input
-                  name="rate"
-                  inputMode="decimal"
-                  required
-                  readOnly={e.currency === "EUR"}
-                  defaultValue={e.currency === "EUR" ? "1" : ""}
-                />
-              </label>
-              <label>
-                Fecha de cotización del pago
-                <input
+                  type="hidden"
                   name="rate_date"
-                  type="date"
-                  required
-                  defaultValue={new Date().toISOString().slice(0, 10)}
+                  value={new Date().toISOString().slice(0, 10)}
                 />
-              </label>
-            </div>
+              </>
+            ) : (
+              <RateInputs
+                currency={e.currency}
+                rateLabel={`EUR por 1 ${e.currency} de este pago`}
+                dateLabel="Fecha de cotización del pago"
+              />
+            )}
             <label>
               Fecha del pago
               <input

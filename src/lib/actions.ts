@@ -629,14 +629,12 @@ export async function savePersonalExpense(f: FormData) {
       if (!data?.length) throw new Error("No se encontró tu gasto personal.");
     } else {
       const request = uuid.parse(get(f, "request_id"));
-      const { error } = await client
-        .from("personal_expenses")
-        .insert({
-          ...record,
-          trip_id: trip,
-          user_id: user.id,
-          request_id: request,
-        });
+      const { error } = await client.from("personal_expenses").insert({
+        ...record,
+        trip_id: trip,
+        user_id: user.id,
+        request_id: request,
+      });
       if (error && error.code !== "23505") throw dbError(error);
     }
     return "Gasto personal guardado. Solo vos podés verlo.";

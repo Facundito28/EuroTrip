@@ -1,6 +1,14 @@
 import Link from "next/link";
 const steps = [
   [
+    "Monedas y cotizaciones",
+    "España, Francia, Portugal y Países Bajos usan euros (EUR). Londres usa libras esterlinas (GBP) y República Checa, coronas checas (CZK). USD es dólar estadounidense y ARS, peso argentino. Consultar cotización online muestra una referencia con fuente y fecha; Usar esta referencia completa el cambio y la fecha, y podés corregirlos antes de guardar. En ARS elegí oficial, blue o MEP: se usa venta y se cruza con EUR/USD. Estas referencias pueden ser del último día hábil y no incluyen comisiones de tarjeta. No cambian las compras guardadas.",
+  ],
+  [
+    "Menú con un gesto",
+    "En celular podés abrir el menú deslizando hacia la derecha desde el borde izquierdo y cerrarlo deslizando hacia la izquierda sobre el menú. También podés seguir usando el botón. Los gestos reservados del navegador pueden tener prioridad en algunos dispositivos.",
+  ],
+  [
     "Mi presupuesto y mis compras privadas",
     "En Resumen tocá Definir mi presupuesto o Editar mi presupuesto, ingresá tu límite en EUR y guardá. Agregar gasto personal permite registrar una hamburguesa, ropa o cualquier compra solo tuya. También podés elegir Solo para mí · privado al cargar un gasto nuevo. Esas compras aparecen únicamente en Mis gastos y se suman a tu consumo personal junto con tu parte de los compartidos. No generan deudas ni cambian el presupuesto grupal y no las ve el organizador. Un gasto compartido con un solo participante sigue siendo visible para el grupo; la opción privada es distinta. Los registros compartidos anteriores conservan su visibilidad y no se convierten automáticamente.",
   ],

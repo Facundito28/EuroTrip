@@ -105,3 +105,15 @@ Definir/Editar mi presupuesto son botones visibles; Agregar gasto personal y Mis
 Las ocho pruebas existentes pasaron con la nueva separación privada. Las dos nuevas de privacidad y diseño pasaron en ejecución dirigida en escritorio y móvil, incluyendo capturas revisadas. Lint y primera compilación aprobaron; Vercel recompila la versión final con simplificación de campos EUR.
 
 Versión final publicada READY `dpl_BZcHxCAc72VFQYaibrW6aPrcsUDs`. Compilación y TypeScript aprobados en Vercel, ingreso HTTP 200, guía privada/pública de uso HTTP 200 y CSV anónimo HTTP 401. Ocho pruebas existentes aprobadas y dos nuevas aprobadas en ejecución dirigida final, incluyendo cambio a USD, controles de fecha y selección de privado. Se corrigió la selección del combobox del test y se reejecutaron las dos afectadas; no se desactivaron aserciones.
+
+## Monedas del recorrido, cotizaciones públicas y menú por gesto
+
+Migración 202610170001 aplicada: CZK habilitado en gastos compartidos, privados, devoluciones y escenarios; no se modificó el recorrido ni importes anteriores. Selector con nombres completos Euro, Dólar estadounidense, Libra esterlina, Corona checa y Peso argentino; ayuda por destino.
+
+Referencias gratuitas mediante Frankfurter v1 y DolarAPI. Endpoint de precios públicos `/api/rates`, sin claves ni datos personales, consulta limitada a URLs fijas y mercados validados. Caché externa 1 h para Europa y 15 min para ARS; timeout y validación de respuesta. Conversión decimal con BigInt y ocho decimales. Referencia se aplica solo con confirmación, es editable y no recalcula operaciones guardadas. ARS requiere elegir oficial/blue/MEP, usa venta y muestra ambas fechas del cruce. No incluye comisiones ni se promete cambio de tarjeta o actualización en tiempo real.
+
+Se comprobaron respuestas REALES desde producción: Europa y los tres mercados ARS devolvieron 200 con fechas y cotizaciones válidas. Proveedor europeo fecha 2026-10-16; ARS fechas 2026-10-16/17 según mercado. Las páginas propuestas y proveedores directos resultaron bloqueados por el proxy cloud (403), pero las APIs funcionaron desde Vercel. Se preservó TLS. El código no scrapea ni atribuye estas cotizaciones a FinanzasArgy/Dolarito.
+
+63 pruebas unitarias/SQL aprobadas y las 12 pruebas de navegador aprobadas entre la suite y ejecuciones dirigidas. La nueva prueba guarda CZK, valida nombres y confirma explícitamente una referencia. Gesto probado con pointer events y entrada táctil nativa de Chromium/CDP: abrir desde borde, cerrar, ignorar scroll vertical. Se respetó la transición del panel y el touch-action del overlay; no se presenta como prueba física de Safari. El navegador del sistema puede reservar el gesto de retroceso en iOS.
+
+Verificador real Supabase aprobado incluyendo gasto y pago en CZK; limpieza completa de cinco cuentas temporales y sus datos. Lint, TypeScript y compilación aprobados antes de publicar; Vercel recompila la versión final.

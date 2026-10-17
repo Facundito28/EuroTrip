@@ -2752,3 +2752,37 @@ input::-webkit-date-and-time-value {
 .sidebar .brand {
   flex-shrink: 0;
 }
+
+.reference-quote {
+  padding: 14px;
+  margin: 14px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow-wrap: anywhere;
+}
+.reference-quote p {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+select {
+  text-overflow: ellipsis;
+}
+.menu-swipe-edge {
+  display: none;
+}
+@media (max-width: 650px) {
+  .menu-swipe-edge {
+    display: block;
+    position: fixed;
+    left: 0;
+    top: 74px;
+    bottom: 0;
+    width: 16px;
+    z-index: 30;
+    touch-action: pan-y pinch-zoom;
+  }
+  .sidebar,
+  .menu-overlay {
+    touch-action: pan-y pinch-zoom;
+  }
+}

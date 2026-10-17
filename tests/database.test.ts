@@ -71,6 +71,9 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync("supabase/migrations/202610170001_czech_currency.sql", "utf8"),
+  );
   await as(0);
   trip = (
     await db.query<{ id: string }>(
@@ -687,4 +690,44 @@ it("private purchases remain invisible to fellow travelers and the organizer", a
     id,
   ]);
   await db.query("delete from public.personal_expenses where id=$1", [id]);
+});
+it("accepts Czech koruna in shared expenses, private purchases, scenarios and settlements", async () => {
+  await as(0);
+  const eid = (
+    await db.query<{ id: string }>(
+      "select public.save_expense(null,$1,'Metro Praga','Transporte',10000,'CZK',0.04,'2027-04-22','2027-04-22','paid',$2,$3,'',$4) id",
+      [
+        trip,
+        users[0],
+        users.slice(0, 2),
+        "cccccccc-1111-4111-8111-111111111111",
+      ],
+    )
+  ).rows[0].id;
+  expect(
+    (
+      await db.query<{ eur: number }>(
+        "select eur_minor::int eur from public.expenses where id=$1",
+        [eid],
+      )
+    ).rows[0].eur,
+  ).toBe(400);
+  await db.query(
+    "insert into public.personal_expenses(trip_id,description,category,amount_minor,currency,rate_to_eur,rate_date,occurred_on,status) values($1,'Mi café en Praga','Comida',10000,'CZK',0.04,'2027-04-22','2027-04-22','paid')",
+    [trip],
+  );
+  await db.query(
+    "insert into public.settlements(trip_id,from_id,to_id,amount_minor,currency,rate_to_eur,rate_date,occurred_on) values($1,$2,$3,10000,'CZK',0.04,'2027-04-22','2027-04-22')",
+    [trip, users[0], users[1]],
+  );
+  const scenario = (
+    await db.query<{ id: string }>(
+      "insert into public.scenarios(trip_id,name) values($1,'Praga') returning id",
+      [trip],
+    )
+  ).rows[0].id;
+  await db.query(
+    "insert into public.scenario_items(trip_id,scenario_id,description,amount_minor,currency,rate_to_eur,rate_date,confidence) values($1,$2,'Tranvía',10000,'CZK',0.04,'2027-04-22','estimated')",
+    [trip, scenario],
+  );
 });

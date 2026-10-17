@@ -41,6 +41,9 @@ await db.exec(
 await db.exec(
   readFileSync("supabase/migrations/202610160007_private_expenses.sql", "utf8"),
 );
+await db.exec(
+  readFileSync("supabase/migrations/202610170001_czech_currency.sql", "utf8"),
+);
 const passwords = new Map<string, string>();
 const identities = new Map<string, { id: string; email: string }>();
 const tables = new Set([

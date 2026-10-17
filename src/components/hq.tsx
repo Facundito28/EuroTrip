@@ -68,6 +68,7 @@ import {
 } from "./private-expenses";
 import { ExpensePayments } from "./expense-payments";
 import { ActivityFeed } from "./activity";
+import { useSwipeMenu } from "./use-swipe-menu";
 import { MemberName } from "./member-name";
 import { TripMap } from "./trip-map";
 import { googleCalendarUrl } from "@/lib/agenda";
@@ -197,6 +198,7 @@ export function HQ({ data }: { data: HQData }) {
     [status, setStatus] = useState("all"),
     [online, setOnline] = useState(true);
   const router = useRouter();
+  const swipe = useSwipeMenu(menu, !modal, setMenu);
   useEffect(() => {
     const refresh = () => {
       if (navigator.onLine && document.visibilityState === "visible")
@@ -289,7 +291,10 @@ export function HQ({ data }: { data: HQData }) {
       }[modal.kind]
     : "";
   return (
-    <div className="app-shell">
+    <div className="app-shell" {...swipe}>
+      {!menu && !modal && (
+        <div className="menu-swipe-edge" aria-hidden="true" />
+      )}
       <aside className={`sidebar ${menu ? "open" : ""}`}>
         <Link href="/" className="brand">
           <span className="brand-icon">
@@ -844,7 +849,7 @@ export function HQ({ data }: { data: HQData }) {
                         <div className="expense-details">
                           <p>
                             1 {e.currency} = {e.rate_to_eur} EUR · Cotización
-                            manual del {dateLabel(e.rate_date)}
+                            guardada del {dateLabel(e.rate_date)}
                           </p>
                           <p className="preserve">
                             {e.notes || "Sin notas adicionales."}

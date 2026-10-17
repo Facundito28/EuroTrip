@@ -689,3 +689,166 @@ test("private spending, visible budget editing and mobile form containment", asy
     .getByRole("button", { name: "Cerrar ventana", exact: true })
     .click();
 });
+test("named travel currencies, online quote confirmation and swipe navigation", async ({
+  page,
+}, info) => {
+  await signIn(page, `fx-${info.project.name}@example.test`);
+  await page
+    .getByText("Soy el organizador: crear un viaje", { exact: true })
+    .click();
+  await page.getByLabel("Tu nombre", { exact: true }).fill("Viajero monedas");
+  await page.getByRole("button", { name: "Crear mi viaje" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Tu viaje, bajo control." }),
+  ).toBeVisible();
+  if (info.project.name === "mobile") {
+    const shell = page.locator(".app-shell");
+    await shell.dispatchEvent("pointerdown", {
+      pointerType: "touch",
+      isPrimary: true,
+      pointerId: 1,
+      clientX: 25,
+      clientY: 120,
+    });
+    await shell.dispatchEvent("pointerup", {
+      pointerType: "touch",
+      isPrimary: true,
+      pointerId: 1,
+      clientX: 28,
+      clientY: 240,
+    });
+    await expect(
+      page.getByRole("button", { name: "Cerrar menú", exact: true }),
+    ).toHaveCount(0);
+    await shell.dispatchEvent("pointerdown", {
+      pointerType: "touch",
+      isPrimary: true,
+      pointerId: 2,
+      clientX: 25,
+      clientY: 120,
+    });
+    await shell.dispatchEvent("pointerup", {
+      pointerType: "touch",
+      isPrimary: true,
+      pointerId: 2,
+      clientX: 160,
+      clientY: 125,
+    });
+    await expect(
+      page.getByRole("button", { name: "Cerrar menú", exact: true }),
+    ).toBeVisible();
+    await shell.dispatchEvent("pointerdown", {
+      pointerType: "touch",
+      isPrimary: true,
+      pointerId: 3,
+      clientX: 190,
+      clientY: 120,
+    });
+    await shell.dispatchEvent("pointerup", {
+      pointerType: "touch",
+      isPrimary: true,
+      pointerId: 3,
+      clientX: 30,
+      clientY: 125,
+    });
+    await expect(
+      page.getByRole("button", { name: "Cerrar menú", exact: true }),
+    ).toHaveCount(0);
+    const cdp = await page.context().newCDPSession(page);
+    async function nativeSwipe(from: number, to: number) {
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x: from, y: 220, id: 1 }],
+      });
+      for (const t of [0.3, 0.6, 1])
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x: from + (to - from) * t, y: 220, id: 1 }],
+        });
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+    }
+    await expect
+      .poll(() =>
+        page
+          .locator("aside.sidebar")
+          .evaluate((el) => el.getBoundingClientRect().right),
+      )
+      .toBeLessThanOrEqual(0);
+    await nativeSwipe(8, 160);
+    await expect(
+      page.getByRole("button", { name: "Cerrar menú", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator("aside.sidebar")).toHaveCSS(
+      "transform",
+      "matrix(1, 0, 0, 1, 0, 0)",
+    );
+    await nativeSwipe(180, 30);
+    await expect(
+      page.getByRole("button", { name: "Cerrar menú", exact: true }),
+    ).toHaveCount(0);
+    await cdp.detach();
+    // Suppression ends on the next real gesture, tested here by a new pointer sequence.
+    await shell.dispatchEvent("pointerdown", {
+      pointerType: "touch",
+      isPrimary: true,
+      pointerId: 4,
+      clientX: 200,
+      clientY: 300,
+    });
+  }
+  await page.getByRole("button", { name: "Cargar gasto", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByLabel("Descripción", { exact: true })
+    .fill("Metro en Praga");
+  await dialog.getByLabel("Importe original").fill("100");
+  const select = dialog.getByRole("combobox", { name: "Moneda", exact: true });
+  await expect(
+    select.getByRole("option", { name: /Libra esterlina/ }),
+  ).toHaveCount(1);
+  await expect(
+    select.getByRole("option", { name: /Corona checa/ }),
+  ).toHaveCount(1);
+  await select.selectOption("CZK");
+  await page.route("**/api/rates", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        date: "2026-10-16",
+        source: "Referencia de prueba",
+        perEur: { EUR: "1", USD: "1.1", GBP: "0.85", CZK: "25" },
+        toEur: { EUR: "1", USD: "0.90909091", GBP: "1.17647059", CZK: "0.04" },
+        peso: null,
+      }),
+    }),
+  );
+  await dialog
+    .getByRole("button", { name: "Consultar cotización online", exact: true })
+    .click();
+  await expect(dialog.getByText(/Referencia de prueba/)).toBeVisible();
+  await expect(dialog.getByLabel("EUR por 1 CZK", { exact: true })).toHaveValue(
+    "",
+  );
+  await dialog
+    .getByRole("button", { name: "Usar esta referencia", exact: true })
+    .click();
+  await expect(dialog.getByLabel("EUR por 1 CZK", { exact: true })).toHaveValue(
+    "0.04",
+  );
+  await dialog
+    .getByRole("button", { name: "Guardar gasto", exact: true })
+    .click();
+  await expect(dialog).not.toBeVisible();
+  await navigate(page, "Gastos");
+  await expect(
+    page.getByRole("heading", { name: "Metro en Praga", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

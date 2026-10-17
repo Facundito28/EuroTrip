@@ -9,7 +9,14 @@ import {
   saveTrip,
   inviteMember,
 } from "@/lib/actions";
-import { currencies, decimalAmount, formatMoney } from "@/lib/money";
+import {
+  currencies,
+  currencyLabels,
+  currencyPlaces,
+  decimalAmount,
+  formatMoney,
+  type Currency,
+} from "@/lib/money";
 import {
   categories,
   type HQData,
@@ -18,6 +25,7 @@ import {
   type Scenario,
 } from "@/lib/types";
 import { eventZones } from "@/lib/agenda";
+import { RateInputs } from "./rate-inputs";
 import { ReceiptUploader } from "./receipt-uploader";
 import { ActionForm, HiddenTrip } from "./action-form";
 const today = () => new Date().toISOString().slice(0, 10);
@@ -31,7 +39,9 @@ export function MoneyFields({
     "amount_minor" | "currency" | "rate_to_eur" | "rate_date"
   >;
 }) {
-  const [currency, setCurrency] = useState<string>(expense?.currency ?? "EUR");
+  const [currency, setCurrency] = useState<Currency>(
+    expense?.currency ?? "EUR",
+  );
   return (
     <>
       <div className="form-grid">
@@ -50,14 +60,17 @@ export function MoneyFields({
           <select
             name="currency"
             value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
+            onChange={(e) => setCurrency(e.target.value as Currency)}
           >
             {currencies.map((c) => (
-              <option key={c}>{c}</option>
+              <option key={c} value={c}>
+                {currencyLabels[c]}
+              </option>
             ))}
           </select>
         </label>
       </div>
+      <p className="field-help">{currencyPlaces[currency]}</p>
       {currency === "EUR" ? (
         <>
           <input type="hidden" name="rate" value="1" />
@@ -68,41 +81,16 @@ export function MoneyFields({
           />
         </>
       ) : (
-        <>
-          <div className="form-grid">
-            <label>
-              EUR por 1 {currency}
-              <input
-                key={currency}
-                name="rate"
-                inputMode="decimal"
-                required
-                readOnly={currency === "EUR"}
-                defaultValue={
-                  currency === "EUR"
-                    ? "1"
-                    : !reviewRate && expense?.currency === currency
-                      ? String(expense.rate_to_eur)
-                      : ""
-                }
-                placeholder="Ingresá la cotización"
-              />
-            </label>
-            <label>
-              Fecha de la cotización
-              <input
-                type="date"
-                name="rate_date"
-                required
-                defaultValue={expense?.rate_date ?? today()}
-              />
-            </label>
-          </div>
-          <p className="field-help">
-            Cotización manual: por ejemplo, indicá cuántos EUR equivale una
-            unidad de la moneda elegida. Se conserva con esta operación.
-          </p>
-        </>
+        <RateInputs
+          key={currency}
+          currency={currency}
+          initialRate={
+            !reviewRate && expense?.currency === currency
+              ? String(expense.rate_to_eur)
+              : ""
+          }
+          initialDate={expense?.rate_date ?? today()}
+        />
       )}
     </>
   );

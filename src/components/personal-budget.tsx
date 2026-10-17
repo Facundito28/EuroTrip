@@ -4,6 +4,7 @@ import { personalTotals, totals } from "@/lib/finance";
 import { decimalAmount, formatMoney, toEur } from "@/lib/money";
 import { savePersonalBudget, saveDisplayRate } from "@/lib/actions";
 import type { HQData } from "@/lib/types";
+import { RateInputs } from "./rate-inputs";
 import { ActionForm, HiddenTrip } from "./action-form";
 
 export function PersonalBudget({
@@ -51,8 +52,8 @@ export function PersonalBudget({
             value={currency}
             onChange={(e) => setCurrency(e.target.value as "EUR" | "USD")}
           >
-            <option>EUR</option>
-            <option>USD</option>
+            <option value="EUR">Euros (EUR)</option>
+            <option value="USD">Dólares (USD)</option>
           </select>
         </label>
       </div>
@@ -159,28 +160,19 @@ export function PersonalBudget({
           <summary>Configurar cotización USD/EUR</summary>
           <ActionForm action={saveDisplayRate} label="Guardar cotización">
             <HiddenTrip id={data.trip.id} />
-            <label>
-              Dólares por 1 euro
-              <input
-                name="usd_per_eur"
-                inputMode="decimal"
-                required
-                defaultValue={rate ?? ""}
-                placeholder="Ingresá la cotización acordada"
-              />
-            </label>
-            <label>
-              Fecha de la cotización
-              <input
-                name="display_rate_date"
-                type="date"
-                required
-                defaultValue={
-                  data.trip.display_rate_date ??
-                  new Date().toISOString().slice(0, 10)
-                }
-              />
-            </label>
+            <RateInputs
+              currency="USD"
+              direction="perEur"
+              initialRate={rate ?? ""}
+              initialDate={
+                data.trip.display_rate_date ??
+                new Date().toISOString().slice(0, 10)
+              }
+              rateName="usd_per_eur"
+              dateName="display_rate_date"
+              rateLabel="Dólares por 1 euro"
+              dateLabel="Fecha de la cotización"
+            />
             <p className="field-help">
               Solo cambia la vista de totales en USD. No recalcula gastos,
               deudas ni pagos anteriores.

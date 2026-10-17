@@ -1,5 +1,19 @@
-export const currencies = ["EUR", "USD", "GBP", "ARS"] as const;
+export const currencies = ["EUR", "USD", "GBP", "CZK", "ARS"] as const;
 export type Currency = (typeof currencies)[number];
+export const currencyLabels: Record<Currency, string> = {
+  EUR: "Euro (EUR)",
+  USD: "Dólar estadounidense (USD)",
+  GBP: "Libra esterlina (GBP)",
+  CZK: "Corona checa (CZK)",
+  ARS: "Peso argentino (ARS)",
+};
+export const currencyPlaces: Record<Currency, string> = {
+  EUR: "España, Francia, Portugal y Países Bajos usan euros.",
+  GBP: "Reino Unido · Londres: libra esterlina.",
+  CZK: "República Checa · Praga: corona checa.",
+  USD: "Dólar estadounidense: compras y reservas en dólares.",
+  ARS: "Argentina: elegí tu referencia o ingresá el cambio efectivo.",
+};
 export const MAX_MINOR = 1_000_000_000_000;
 
 /** All amounts are integer hundredths. Never multiply binary floating point money. */
@@ -103,4 +117,26 @@ export function splitWeighted(
     rest--;
   }
   return result;
+}
+
+/** Decimal reciprocal, rounded half up to eight places without floating point division. */
+export function reciprocalRate(value: string) {
+  const [whole, fraction = ""] = validateRate(value).split(".");
+  const scaled = BigInt(whole) * 100000000n + BigInt(fraction.padEnd(8, "0"));
+  const inverse = (10000000000000000n + scaled / 2n) / scaled;
+  return validateRate(
+    `${inverse / 100000000n}.${String(inverse % 100000000n).padStart(8, "0")}`,
+  );
+}
+export function divideRates(numerator: string, denominator: string) {
+  const scaled = (v: string) => {
+    const [a, b = ""] = validateRate(v).split(".");
+    return BigInt(a) * 100000000n + BigInt(b.padEnd(8, "0"));
+  };
+  const n = scaled(numerator),
+    d = scaled(denominator);
+  const r = (n * 100000000n + d / 2n) / d;
+  return validateRate(
+    `${r / 100000000n}.${String(r % 100000000n).padStart(8, "0")}`,
+  );
 }

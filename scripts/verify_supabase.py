@@ -148,6 +148,11 @@ def main():
         rpc(owner,"delete_expense_payment",{"p_trip":trip,"p_payment":payment_id})
         assert next(e for e in rpc(owner,"hq_snapshot",{"p_trip":trip})["expenses"] if e["id"]==advanced_id)["status"]=="reserved"
         print("PASS: unequal split, partial payments with different payers/rates, deduplication, reversal and private audit.")
+        czk = dict(payload,p_description="Praga temporal",p_amount=10000,p_currency="CZK",p_rate="0.04",p_status="paid",p_request=str(uuid.uuid4()))
+        czk_id=rpc(owner,"save_expense",czk)
+        czk_saved=next(e for e in rpc(owner,"hq_snapshot",{"p_trip":trip})["expenses"] if e["id"]==czk_id)
+        assert czk_saved["currency"]=="CZK" and czk_saved["eur_minor"]==400 and czk_saved["paid_eur_minor"]==400
+        print("PASS: real Czech koruna expense and effective payment conversion.")
         icon = (ROOT / "public/icon-192.png").read_bytes()
         png = icon + bytes(5 * 1024 * 1024 - len(icon))
         object_path = f"{trip}/{expense}/{uuid.uuid4()}.png"
