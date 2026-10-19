@@ -80,6 +80,9 @@ beforeAll(async () => {
   await db.exec(
     readFileSync("supabase/migrations/202610170003_recovery_codes.sql", "utf8"),
   );
+  await db.exec(
+    readFileSync("supabase/migrations/202610190001_trip_companion.sql", "utf8"),
+  );
   await as(0);
   trip = (
     await db.query<{ id: string }>(
@@ -857,4 +860,81 @@ it("keeps recovery hashes private, codes single-use and admin-only consumption r
     await db.query<{ v: string[] }>("select public.generate_recovery_codes() v")
   ).rows[0].v;
   expect(rotated).not.toContain(codes[1]);
+});
+it("shares trip tasks and bookings only among members, validates assignees and keeps the finance ledger separate", async () => {
+  await as(0);
+  const task = (
+    await db.query<{ id: string }>(
+      "insert into public.trip_tasks(trip_id,title,category,assignee_id,due_on) values($1,'Check-in real','Reservas',$2,'2027-04-21') returning id",
+      [trip, users[1]],
+    )
+  ).rows[0].id;
+  const booking = (
+    await db.query<{ id: string }>(
+      "insert into public.trip_bookings(trip_id,title,kind,city,starts_on,ends_on,reference) values($1,'Hotel registrado','stay','Madrid','2027-04-22','2027-04-24','ABC123') returning id",
+      [trip],
+    )
+  ).rows[0].id;
+  await as(1);
+  await db.query("update public.trip_tasks set done=true where id=$1", [task]);
+  const snapshot = (
+    await db.query<{ v: import("../src/lib/types").HQData }>(
+      "select public.hq_snapshot($1) v",
+      [trip],
+    )
+  ).rows[0].v;
+  expect(snapshot.tasks!.find((t) => t.id === task)?.done).toBe(true);
+  expect(snapshot.bookings!.find((b) => b.id === booking)?.reference).toBe(
+    "ABC123",
+  );
+  expect(
+    snapshot.expenses.some((e) => e.description === "Hotel registrado"),
+  ).toBe(false);
+  await fails(
+    "insert into public.trip_tasks(trip_id,title,category,assignee_id) values($1,'Intruso','Otros',$2)",
+    [trip, users[4]],
+  );
+  await fails(
+    "update public.trip_bookings set url='javascript:alert(1)' where id=$1",
+    [booking],
+  );
+  await fails(
+    "update public.trip_bookings set ends_on='2027-04-20' where id=$1",
+    [booking],
+  );
+  await as(4);
+  expect(
+    (await db.query("select * from public.trip_tasks where trip_id=$1", [trip]))
+      .rows,
+  ).toEqual([]);
+  expect(
+    (
+      await db.query("select * from public.trip_bookings where trip_id=$1", [
+        trip,
+      ])
+    ).rows,
+  ).toEqual([]);
+  expect(
+    (
+      await db.query(
+        "update public.trip_tasks set title='Intrusión' where id=$1 returning id",
+        [task],
+      )
+    ).rows,
+  ).toEqual([]);
+  expect(
+    (
+      await db.query(
+        "delete from public.trip_bookings where id=$1 returning id",
+        [booking],
+      )
+    ).rows,
+  ).toEqual([]);
+  await fails(
+    "insert into public.trip_bookings(trip_id,title,kind,starts_on,ends_on) values($1,'Intrusión','stay','2027-04-22','2027-04-23')",
+    [trip],
+  );
+  await as(0);
+  await db.query("delete from public.trip_tasks where id=$1", [task]);
+  await db.query("delete from public.trip_bookings where id=$1", [booking]);
 });

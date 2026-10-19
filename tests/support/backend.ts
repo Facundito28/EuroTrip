@@ -50,9 +50,14 @@ await db.exec(
 await db.exec(
   readFileSync("supabase/migrations/202610170003_recovery_codes.sql", "utf8"),
 );
+await db.exec(
+  readFileSync("supabase/migrations/202610190001_trip_companion.sql", "utf8"),
+);
 const passwords = new Map<string, string>();
 const identities = new Map<string, { id: string; email: string }>();
 const tables = new Set([
+  "trip_tasks",
+  "trip_bookings",
   "trips",
   "trip_members",
   "trip_invitations",
@@ -107,6 +112,7 @@ function jwt(user: { id: string; email: string }) {
 }
 const uploads = new Map<string, { path: string; userId: string }>();
 const files = new Map<string, { bytes: Buffer; type: string }>();
+let legacySnapshot = false;
 let queue: Promise<unknown> = Promise.resolve();
 createServer((req, res) => {
   const run = async () => {
@@ -161,7 +167,12 @@ createServer((req, res) => {
         return reply(200, { Key: "receipts/" + ticket.path });
       }
       if (url.pathname === "/health") return reply(200, { ready: true });
+      if (url.pathname === "/legacy-snapshot") {
+        legacySnapshot = true;
+        return reply(200, {});
+      }
       if (url.pathname === "/reset") {
+        legacySnapshot = false;
         await db.exec(
           "reset role; truncate public.trips cascade; delete from auth.users; delete from private.recovery_limits",
         );
@@ -306,7 +317,19 @@ createServer((req, res) => {
           `select public.${identifier(fn)}(${names.map((n, i) => `${identifier(n)} => $${i + 1}`).join(",")}) value`,
           Object.values(body),
         );
-        return reply(200, result.rows[0]?.value ?? null);
+        const value = result.rows[0]?.value ?? null;
+        if (
+          fn === "hq_snapshot" &&
+          legacySnapshot &&
+          value &&
+          typeof value === "object"
+        ) {
+          const old = value as Record<string, unknown>;
+          delete old.companion_ready;
+          delete old.tasks;
+          delete old.bookings;
+        }
+        return reply(200, value);
       }
       const table = url.pathname.split("/").at(-1)!;
       if (!tables.has(table))

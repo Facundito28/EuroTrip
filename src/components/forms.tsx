@@ -491,11 +491,13 @@ export function EventForm({
           name="time_zone"
           defaultValue={event?.time_zone ?? "Europe/Madrid"}
         >
-          {eventZones.map((zone) => (
-            <option key={zone} value={zone}>
-              {zone.replace("Europe/", "")}
-            </option>
-          ))}
+          {eventZones
+            .filter((zone) => data.companion_ready || zone !== "Europe/Prague")
+            .map((zone) => (
+              <option key={zone} value={zone}>
+                {zone.replace("Europe/", "")}
+              </option>
+            ))}
         </select>
       </label>
       <p className="field-help">

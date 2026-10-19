@@ -974,3 +974,126 @@ test("deadlines, duplicate confirmation, recoverable trash and one-use password 
   });
   expect(reused.status()).toBe(400);
 });
+test("trip companion: shared checklist, bookings, today's stay and checkout", async ({
+  page,
+}, info) => {
+  await signIn(page, `companion-${info.project.name}@example.test`);
+  await page
+    .getByText("Soy el organizador: crear un viaje", { exact: true })
+    .click();
+  await page
+    .getByLabel("Tu nombre", { exact: true })
+    .fill("Organizador viajero");
+  await page
+    .getByRole("button", { name: "Crear mi viaje", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Tu viaje, bajo control.", exact: true }),
+  ).toBeVisible();
+  await navigate(page, "Checklist");
+  await page
+    .getByRole("button", { name: "Agregar tarea", exact: true })
+    .click();
+  await page
+    .getByLabel("Tarea", { exact: true })
+    .fill("Hacer check-in para Londres");
+  await page
+    .getByRole("combobox", { name: "Responsable", exact: true })
+    .selectOption({ label: "Organizador viajero" });
+  await page
+    .getByLabel("Vencimiento de tarea", { exact: true })
+    .fill("2027-04-21");
+  await page
+    .getByRole("button", { name: "Guardar tarea", exact: true })
+    .click();
+  const task = page
+    .locator(".companion-list li")
+    .filter({ hasText: "Hacer check-in para Londres" });
+  await expect(task).toBeVisible();
+  await task.getByRole("button", { name: "Completar", exact: true }).click();
+  await expect(task).toHaveCount(0);
+  await page
+    .getByRole("combobox", { name: "Mostrar tareas", exact: true })
+    .selectOption("all");
+  await expect(task.locator("h3")).toHaveClass("task-done");
+  await task
+    .getByRole("button", { name: "Volver a pendiente", exact: true })
+    .click();
+  await expect(task.locator("h3")).not.toHaveClass("task-done");
+  await navigate(page, "Reservas");
+  await page
+    .getByRole("button", { name: "Agregar reserva", exact: true })
+    .click();
+  await page
+    .getByLabel("Nombre de la reserva", { exact: true })
+    .fill("Hotel Madrid confirmado");
+  await page.getByLabel("Ciudad de la reserva", { exact: true }).fill("Madrid");
+  await page
+    .getByLabel("Inicio de reserva", { exact: true })
+    .fill("2027-04-22");
+  await page.getByLabel("Fin de reserva", { exact: true }).fill("2027-04-24");
+  await page
+    .getByLabel("Dirección o punto de encuentro", { exact: true })
+    .fill("Calle Mayor 1");
+  await page
+    .getByLabel("Número o código de reserva", { exact: true })
+    .fill("MAD123");
+  await page
+    .getByRole("button", { name: "Guardar reserva", exact: true })
+    .click();
+  await expect(page.locator(".companion-list")).toContainText("MAD123");
+  await navigate(page, "Hoy");
+  await page.getByLabel("Día del viaje", { exact: true }).fill("2027-04-23");
+  await expect(page.locator(".today-item")).toContainText(
+    "Hotel Madrid confirmado",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  if (info.project.name === "mobile")
+    await expect
+      .poll(() =>
+        page
+          .locator(".sidebar")
+          .evaluate((el) => el.getBoundingClientRect().right),
+      )
+      .toBeLessThanOrEqual(1);
+  await page.screenshot({
+    path: `test-results/companion-${info.project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByLabel("Día del viaje", { exact: true }).fill("2027-04-24");
+  await expect(page.locator(".today-item")).toHaveCount(0);
+  await navigate(page, "Gastos");
+  await expect(page.locator(".expense-row")).toHaveCount(0);
+});
+test("older database snapshot keeps finance usable and hides uninstalled companion sections", async ({
+  page,
+  request,
+}, info) => {
+  await request.get("http://127.0.0.1:54329/legacy-snapshot");
+  await signIn(page, `legacy-${info.project.name}@example.test`);
+  await page
+    .getByText("Soy el organizador: crear un viaje", { exact: true })
+    .click();
+  await page
+    .getByLabel("Tu nombre", { exact: true })
+    .fill("Viajero base anterior");
+  await page
+    .getByRole("button", { name: "Crear mi viaje", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Tu viaje, bajo control.", exact: true }),
+  ).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "Navegación principal" });
+  await expect(
+    nav.getByRole("button", { name: "Hoy", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    nav.getByRole("button", { name: "Reservas", exact: true }),
+  ).toHaveCount(0);
+  await navigate(page, "Gastos");
+  await expect(page.locator(".expense-row")).toHaveCount(0);
+});

@@ -72,6 +72,14 @@ const steps = [
     "10. Usarla desde el celular",
     "iPhone y iPad: abrí la app en Safari, Compartir y Agregar a inicio. Android: Chrome, menú e Instalar aplicación o Agregar a pantalla principal. También funciona en PC. Necesitás Internet para consultar o guardar los datos privados; no se sincronizan cambios sin conexión. En Configuración, generá y guardá tus códigos privados de recuperación. Si olvidás tu contraseña, entrá en Olvidé mi contraseña y usá uno. No los compartas: cada uno permite restablecer tu cuenta una sola vez. No se envían correos.",
   ],
+  [
+    "11. Acompañarnos durante el viaje",
+    "Hoy reúne el alojamiento de esa noche, planes del día, próximo plan con horario y tareas propias o sin asignar. Podés elegir otra fecha antes de viajar. Durante el viaje será la portada; Resumen mantiene las finanzas. Las horas corresponden a la zona del destino y el check-out no cuenta como una noche extra.",
+  ],
+  [
+    "12. Reservas y checklist",
+    "En Reservas guardá nombre, ciudad, dirección, fechas y código de la reserva. Vinculá el gasto que ya cargaron para ver sus comprobantes; no se agrega otro consumo ni un evento automático al itinerario. En Checklist pueden asignarse tareas, poner fecha límite y completarlas o reabrirlas. Todo es visible para el grupo y requiere conexión. Estas secciones aparecen cuando su base está actualizada.",
+  ],
 ];
 export default function Guide() {
   return (

@@ -115,6 +115,9 @@ export type Receipt = {
 };
 export type HQData = {
   trip: Trip;
+  companion_ready?: boolean;
+  tasks?: TripTask[];
+  bookings?: TripBooking[];
   members: Member[];
   expenses: Expense[];
   shares: Share[];
@@ -175,3 +178,28 @@ export type PersonalExpense = Pick<
   | "notes"
   | "created_at"
 > & { user_id: string };
+
+export type TripTask = {
+  id: string;
+  trip_id: string;
+  title: string;
+  category: string;
+  assignee_id: string | null;
+  due_on: string | null;
+  done: boolean;
+  notes: string;
+};
+export type TripBooking = {
+  id: string;
+  trip_id: string;
+  title: string;
+  kind: Event["kind"];
+  city: string;
+  starts_on: string;
+  ends_on: string;
+  location: string;
+  reference: string;
+  url: string;
+  notes: string;
+  expense_id: string | null;
+};

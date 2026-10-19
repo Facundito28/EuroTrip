@@ -76,7 +76,11 @@ import { TripOverview, TrashPanel } from "./trip-overview";
 import { RecoveryCodes } from "./recovery";
 import { PersonalBudget } from "./personal-budget";
 import { InstallButton } from "./pwa";
+import { TripToday, TripBookings, TripChecklist } from "./trip-companion";
 const tabs = [
+  ["today", "Hoy", Compass],
+  ["bookings", "Reservas", Paperclip],
+  ["checklist", "Checklist", Check],
   ["dashboard", "Vue d’ensemble", LayoutDashboard],
   ["expenses", "Gastos", Wallet],
   ["personal", "Mis gastos", Wallet],
@@ -193,7 +197,13 @@ function DeleteButton({
   );
 }
 export function HQ({ data }: { data: HQData }) {
-  const [tab, setTab] = useState<Tab>("dashboard"),
+  const [tab, setTab] = useState<Tab>(
+      data.companion_ready &&
+        new Date().toISOString().slice(0, 10) >= data.trip.starts_on &&
+        new Date().toISOString().slice(0, 10) <= data.trip.ends_on
+        ? "today"
+        : "dashboard",
+    ),
     [modal, setModal] = useState<Modal | null>(null),
     [menu, setMenu] = useState(false),
     [search, setSearch] = useState(""),
@@ -314,21 +324,27 @@ export function HQ({ data }: { data: HQData }) {
         </div>
         <span className="nav-label">TU VIAJE, EN ORDEN</span>
         <nav aria-label="Navegación principal">
-          {tabs.map(([id, label, Icon]) => (
-            <button
-              key={id}
-              aria-label={id === "dashboard" ? "Resumen" : label}
-              className={tab === id ? "active" : ""}
-              aria-current={tab === id ? "page" : undefined}
-              onClick={() => navigate(id)}
-            >
-              <Icon size={19} />
-              {id === "dashboard" ? "Resumen" : label}
-              {id === "expenses" && data.expenses.length > 0 && (
-                <span className="nav-count">{data.expenses.length}</span>
-              )}
-            </button>
-          ))}
+          {tabs
+            .filter(
+              ([id]) =>
+                data.companion_ready ||
+                !["today", "bookings", "checklist"].includes(id),
+            )
+            .map(([id, label, Icon]) => (
+              <button
+                key={id}
+                aria-label={id === "dashboard" ? "Resumen" : label}
+                className={tab === id ? "active" : ""}
+                aria-current={tab === id ? "page" : undefined}
+                onClick={() => navigate(id)}
+              >
+                <Icon size={19} />
+                {id === "dashboard" ? "Resumen" : label}
+                {id === "expenses" && data.expenses.length > 0 && (
+                  <span className="nav-count">{data.expenses.length}</span>
+                )}
+              </button>
+            ))}
         </nav>
         <div className="sidebar-bottom">
           <div className="trip-mini">
@@ -425,6 +441,9 @@ export function HQ({ data }: { data: HQData }) {
               <h1>
                 {
                   {
+                    today: "El viaje empieza acá.",
+                    bookings: "Todo listo para llegar.",
+                    checklist: "Menos pendientes. Más viaje.",
                     dashboard: "Tu viaje, bajo control.",
                     expenses: "Cada gasto, en su lugar.",
                     personal: "Tus compras, solo para vos.",
@@ -440,6 +459,11 @@ export function HQ({ data }: { data: HQData }) {
               <p>
                 {
                   {
+                    today: "Tus planes, alojamiento y tareas, a un toque.",
+                    bookings:
+                      "Cada reserva con su referencia y sus comprobantes.",
+                    checklist:
+                      "Tareas compartidas, responsables y fechas límite.",
                     dashboard:
                       "Menos cuentas pendientes. Más momentos por vivir.",
                     expenses: "Gastos visibles para el grupo y sus repartos.",
@@ -498,6 +522,23 @@ export function HQ({ data }: { data: HQData }) {
               )}
             </div>
           </div>
+          {tab === "today" && (
+            <TripToday
+              data={data}
+              onExpense={() => setModal({ kind: "expense" })}
+              onOpenCost={(expense, personal) =>
+                setModal(
+                  personal
+                    ? { kind: "personal", expense: expense as PersonalExpense }
+                    : { kind: "expense", expense: expense as Expense },
+                )
+              }
+              onEvent={(event) => setModal({ kind: "event", event })}
+              onNavigate={navigate}
+            />
+          )}
+          {tab === "bookings" && <TripBookings data={data} />}
+          {tab === "checklist" && <TripChecklist data={data} />}
           {tab === "dashboard" && (
             <>
               <section className="overview-grid">

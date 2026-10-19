@@ -20,13 +20,15 @@ function dateLabel(day: string) {
 export function TripOverview({
   data,
   onOpen,
+  selectedDay,
 }: {
   data: HQData;
+  selectedDay?: string;
   onOpen: (expense: Expense | PersonalExpense, personal: boolean) => void;
 }) {
   const today = useSyncExternalStore(subscribe, localDay, () => "");
   const [chosen, setChosen] = useState("");
-  const day = chosen || today;
+  const day = selectedDay ?? (chosen || today);
   const mine = dailyConsumption(
     data.userId,
     day,
@@ -62,14 +64,18 @@ export function TripOverview({
             <h2>Tu día, de un vistazo</h2>
             <p>Consumos según la fecha de pago. Las devoluciones no suman.</p>
           </div>
-          <label>
-            Ver día
-            <input
-              type="date"
-              value={day}
-              onChange={(e) => setChosen(e.target.value)}
-            />
-          </label>
+          {selectedDay === undefined ? (
+            <label>
+              Ver día
+              <input
+                type="date"
+                value={day}
+                onChange={(e) => setChosen(e.target.value)}
+              />
+            </label>
+          ) : (
+            <span className="pill">{day ? dateLabel(day) : "…"}</span>
+          )}
         </div>
         <div className="personal-totals">
           <div>

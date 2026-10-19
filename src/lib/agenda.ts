@@ -6,6 +6,7 @@ export const eventZones = [
   "Europe/Amsterdam",
   "Europe/Brussels",
   "Europe/Paris",
+  "Europe/Prague",
 ] as const;
 const compact = (date: Date) =>
   date

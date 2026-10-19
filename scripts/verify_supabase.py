@@ -157,6 +157,18 @@ def main():
         czk_saved=next(e for e in rpc(owner,"hq_snapshot",{"p_trip":trip})["expenses"] if e["id"]==czk_id)
         assert czk_saved["currency"]=="CZK" and czk_saved["eur_minor"]==400 and czk_saved["paid_eur_minor"]==400
         print("PASS: real Czech koruna expense and effective payment conversion.")
+        task=request(BASE+"/rest/v1/trip_tasks","POST",{"trip_id":trip,"title":"Check-in temporal","category":"Reservas","assignee_id":users[1],"due_on":"2027-04-21"},owner)[0]
+        request(BASE+"/rest/v1/trip_tasks?id=eq."+task["id"],"PATCH",{"done":True},tokens[1])
+        booking=request(BASE+"/rest/v1/trip_bookings","POST",{"trip_id":trip,"title":"Hotel temporal","kind":"stay","city":"Madrid","starts_on":"2027-04-22","ends_on":"2027-04-24","reference":"TEMP123","expense_id":expense},owner)[0]
+        companion=rpc(tokens[1],"hq_snapshot",{"p_trip":trip})
+        assert companion["companion_ready"] is True
+        assert any(t["id"]==task["id"] and t["done"] for t in companion["tasks"])
+        assert any(b["id"]==booking["id"] for b in companion["bookings"])
+        assert request(BASE+"/rest/v1/trip_tasks?select=id",bearer=tokens[4])==[]
+        assert request(BASE+"/rest/v1/trip_bookings?select=id",bearer=tokens[4])==[]
+        assert request(BASE+"/rest/v1/trip_bookings?id=eq."+booking["id"],"DELETE",bearer=tokens[4])==[]
+        print("PASS: real shared checklist, booking links and outsider isolation.")
+
         icon = (ROOT / "public/icon-192.png").read_bytes()
         png = icon + bytes(5 * 1024 * 1024 - len(icon))
         object_path = f"{trip}/{expense}/{uuid.uuid4()}.png"
@@ -229,7 +241,7 @@ def main():
             try:
                 # IDs are validated UUIDs returned by the API, never raw user SQL.
                 trip_id, owner_id = str(uuid.UUID(trip)), str(uuid.UUID(users[0]))
-                management("/database/query", {"query": f"begin; delete from public.itinerary_events where trip_id='{trip_id}'::uuid; delete from public.expenses where trip_id='{trip_id}'::uuid; delete from public.settlements where trip_id='{trip_id}'::uuid; delete from public.trips where id='{trip_id}'::uuid and owner_id='{owner_id}'::uuid; commit;"})
+                management("/database/query", {"query": f"begin; delete from public.trip_bookings where trip_id='{trip_id}'::uuid; delete from public.trip_tasks where trip_id='{trip_id}'::uuid; delete from public.itinerary_events where trip_id='{trip_id}'::uuid; delete from public.expenses where trip_id='{trip_id}'::uuid; delete from public.settlements where trip_id='{trip_id}'::uuid; delete from public.trips where id='{trip_id}'::uuid and owner_id='{owner_id}'::uuid; commit;"})
             except Exception:
                 failures.append("Temporary trip cleanup requires attention.")
         for user in users:

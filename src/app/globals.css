@@ -2932,3 +2932,103 @@ input[name="amount"] {
     padding-top: 1rem;
   }
 }
+.today-hero {
+  background: linear-gradient(135deg, #243a29, #19251e);
+  border-color: #536e44;
+}
+.today-hero h2 {
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  letter-spacing: -0.04em;
+  margin: 0.75rem 0;
+}
+.today-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+.companion-editor {
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  margin: 1.5rem 0;
+}
+.companion-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+.companion-list > li {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+}
+.companion-list h3,
+.today-item h3 {
+  margin: 0.6rem 0;
+  overflow-wrap: anywhere;
+}
+.companion-list p,
+.today-item p {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.companion-list .row-actions {
+  align-content: start;
+  flex-wrap: wrap;
+  max-width: 350px;
+}
+.task-progress {
+  width: 100%;
+  height: 9px;
+  accent-color: var(--lime);
+  margin-bottom: 1.5rem;
+}
+.task-done {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.today-plan {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+  width: 100%;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 1.2rem 0;
+  color: var(--text);
+}
+.today-plan small {
+  display: block;
+  color: var(--muted);
+  margin-top: 0.5rem;
+}
+.today-item {
+  padding: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+}
+@media (max-width: 850px) {
+  .companion-list > li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .today-shortcuts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .today-shortcuts .button {
+    padding: 0.9rem 0.4rem;
+  }
+}
+.companion-view {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.companion-view > .panel,
+.companion-view > .dashboard-columns {
+  margin: 0;
+}

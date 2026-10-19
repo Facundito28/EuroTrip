@@ -710,3 +710,97 @@ export async function generateRecoveryCodes(
   });
   return result.ok ? { ...result, recoveryCodes: codes } : result;
 }
+
+export async function saveTripTask(f: FormData) {
+  return perform(async () => {
+    const { client } = await session();
+    const record = {
+      trip_id: uuid.parse(get(f, "trip_id")),
+      title: text(160).parse(get(f, "title")),
+      category: z
+        .enum(["Documentación", "Equipaje", "Reservas", "Otros"])
+        .parse(get(f, "category")),
+      assignee_id: get(f, "assignee_id")
+        ? uuid.parse(get(f, "assignee_id"))
+        : null,
+      due_on: get(f, "due_on") ? date.parse(get(f, "due_on")) : null,
+      notes: z.string().max(2000).parse(get(f, "notes")),
+    };
+    const query = get(f, "id")
+      ? client
+          .from("trip_tasks")
+          .update(record)
+          .eq("id", uuid.parse(get(f, "id")))
+          .eq("trip_id", record.trip_id)
+      : client.from("trip_tasks").insert(record);
+    const { error } = await query;
+    if (error) throw dbError(error);
+    return "Tarea guardada.";
+  });
+}
+export async function changeTripTask(f: FormData) {
+  return perform(async () => {
+    const { client } = await session();
+    const query = client.from("trip_tasks");
+    const id = uuid.parse(get(f, "id")),
+      trip = uuid.parse(get(f, "trip_id"));
+    const { error } = await (
+      get(f, "operation") === "delete"
+        ? query.delete()
+        : query.update({ done: get(f, "done") === "yes" })
+    )
+      .eq("id", id)
+      .eq("trip_id", trip);
+    if (error) throw dbError(error);
+    return "Checklist actualizada.";
+  });
+}
+export async function saveTripBooking(f: FormData) {
+  return perform(async () => {
+    const { client } = await session();
+    const starts_on = date.parse(get(f, "starts_on")),
+      ends_on = date.parse(get(f, "ends_on"));
+    if (ends_on < starts_on)
+      throw new Error("La fecha final debe ser posterior al inicio.");
+    const url = get(f, "url").trim();
+    if (url && (!URL.canParse(url) || new URL(url).protocol !== "https:"))
+      throw new Error("El enlace debe comenzar con https://.");
+    const record = {
+      trip_id: uuid.parse(get(f, "trip_id")),
+      title: text(160).parse(get(f, "title")),
+      kind: z.enum(["stay", "transport", "activity"]).parse(get(f, "kind")),
+      city: z.string().trim().max(100).parse(get(f, "city")),
+      starts_on,
+      ends_on,
+      location: z.string().trim().max(300).parse(get(f, "location")),
+      reference: z.string().trim().max(160).parse(get(f, "reference")),
+      url: z.string().max(2000).parse(url),
+      notes: z.string().max(2000).parse(get(f, "notes")),
+      expense_id: get(f, "expense_id")
+        ? uuid.parse(get(f, "expense_id"))
+        : null,
+    };
+    const query = get(f, "id")
+      ? client
+          .from("trip_bookings")
+          .update(record)
+          .eq("id", uuid.parse(get(f, "id")))
+          .eq("trip_id", record.trip_id)
+      : client.from("trip_bookings").insert(record);
+    const { error } = await query;
+    if (error) throw dbError(error);
+    return "Reserva guardada. Los importes se administran en Gastos.";
+  });
+}
+export async function deleteTripBooking(f: FormData) {
+  return perform(async () => {
+    const { client } = await session();
+    const { error } = await client
+      .from("trip_bookings")
+      .delete()
+      .eq("id", uuid.parse(get(f, "id")))
+      .eq("trip_id", uuid.parse(get(f, "trip_id")));
+    if (error) throw dbError(error);
+    return "Reserva eliminada. El gasto vinculado se conserva.";
+  });
+}

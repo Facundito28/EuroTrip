@@ -133,3 +133,13 @@ Recuperación con ocho códigos aleatorios personales de un uso, generados tras 
 Publicación READY `dpl_GWHuERhxYQHB4TBNzUxNQ6UwEF2C`, dominio estable conservado. Vercel recompiló y aprobó TypeScript. HTTP reales: inicio, recuperación, guía, manifiesto y cotizaciones 200; CSV anónimo 401.
 
 Verificador Supabase real aprobado: papelera compartida conserva pago efectivo y comprobante de 5 MiB tras restauración; papelera privada invisible al organizador; coincidencia de duplicado correcta. La ruta publicada `/api/recovery` restableció la contraseña de una cuenta temporal, permitió ingresar con la nueva clave y rechazó reutilizar el mismo código. Limpieza completa de cinco cuentas temporales, sus gastos, cuotas, eventos, viajes y objeto Storage. Ninguna credencial, código real o URL firmada se imprimió ni se agregó al repositorio.
+
+## Acompañante del viaje — 19 de octubre de 2026
+
+Implementados Hoy, Reservas y Checklist. Reservas organizativas vinculables a gastos existentes, sin duplicar importes ni eventos; acceso a comprobantes ya adjuntos al gasto. Tareas compartidas con asignación, vencimiento, filtros, edición, completar/reabrir y eliminación. RLS por membresía en ambas tablas; asignación limitada al mismo viaje y vínculo financiero con clave compuesta. Restricciones de fecha y enlaces HTTPS.
+
+Hoy permite previsualizar fechas, alojamiento excluyendo la noche del check-out, planes y próximo plan con horario ordenado por UTC, mapa bajo demanda y pendientes propios/sin asignar. El resumen de consumos sigue la fecha seleccionada. Se agrega Europe/Prague. Separación de tarjetas revisada en captura móvil; no se guardan datos privados sin conexión.
+
+71 pruebas unitarias/SQL aprobadas. Los 18 casos de navegador aprobaron entre suite y ejecuciones dirigidas: se corrigió una espera prematura del nuevo test móvil al navegar antes de terminar de crear el viaje, sin forzar clics ni desactivar verificaciones. Las nuevas secciones y compatibilidad con snapshot anterior se probaron en escritorio y móvil Chromium; no es prueba física iOS/Android. Build, TypeScript, lint y formato aprobados. Helpers Python validados sintácticamente.
+
+**Activación remota pendiente:** la API administrativa de Supabase respondió HTTP 401 `Invalid access token` tanto al consultar proyectos como al primer SELECT previo a migrar. No se ejecutó la migración real ni se crearon cuentas temporales. `companion_ready` protege la compatibilidad: sin migración, las nuevas secciones y la opción Praga no se ofrecen; la app financiera sigue funcionando. El helper `scripts/upgrade_companion.py --apply` y el verificador remoto quedaron preparados para continuar una vez renovado el secreto seguro. No se afirma validación real de estas tablas ni activación en producción.
